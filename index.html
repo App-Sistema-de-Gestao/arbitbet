@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arbitbet — Terminal de arbitragem e entradas</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b0e14"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        voidbg: '#0b0e14',
+                        darkbg: '#12161f',
+                        darkcard: '#1a1f2c',
+                        darkborder: '#263042',
+                        neonGreen: '#00ff80',
+                        neonGreenSoft: '#10b981',
+                        neonRed: '#ff3b6b',
+                        neonAmber: '#fbbf24'
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e14;
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .neon-card {
+            background: linear-gradient(180deg, rgba(26, 31, 44, 0.96) 0%, rgba(18, 22, 31, 0.98) 100%);
+            border: 1px solid rgba(0, 255, 128, 0.35);
+            box-shadow: 0 0 18px rgba(0, 255, 128, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+        }
+
+        .neon-card:hover {
+            border-color: rgba(0, 255, 128, 0.72);
+            box-shadow: 0 0 24px rgba(0, 255, 128, 0.16);
+        }
+
+        .neon-btn {
+            background: #00ff80;
+            color: #0b0e14;
+            font-weight: 700;
+            box-shadow: 0 0 14px rgba(0, 255, 128, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .neon-btn:hover {
+            background: #2eff96;
+            box-shadow: 0 0 22px rgba(0, 255, 128, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .neon-pill {
+            border: 1px solid rgba(0, 255, 128, 0.45);
+            background: rgba(0, 255, 128, 0.08);
+            color: #00ff80;
+        }
+
+        .status-green {
+            background: rgba(0, 255, 128, 0.14);
+            color: #00ff80;
+            border: 1px solid rgba(0, 255, 128, 0.55);
+            box-shadow: 0 0 12px rgba(0, 255, 128, 0.18);
+        }
+
+        .status-red {
+            background: rgba(255, 59, 107, 0.15);
+            color: #ff5c85;
+            border: 1px solid rgba(255, 59, 107, 0.55);
+            box-shadow: 0 0 12px rgba(255, 59, 107, 0.18);
+        }
+
+        .row-green {
+            background: linear-gradient(90deg, rgba(0, 255, 128, 0.07) 0%, rgba(26, 31, 44, 0.45) 45%, rgba(26, 31, 44, 0.2) 100%);
+            border-left: 3px solid #00ff80;
+        }
+
+        .row-red {
+            background: linear-gradient(90deg, rgba(255, 59, 107, 0.08) 0%, rgba(26, 31, 44, 0.45) 45%, rgba(26, 31, 44, 0.2) 100%);
+            border-left: 3px solid #ff3b6b;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0e14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #232c3d;
+            border-radius: 9999px;
+            border: 1px solid rgba(0, 255, 128, 0.2);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 128, 0.45);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Barra Superior -->
+    <header class="sticky top-0 z-40 bg-darkbg/95 backdrop-blur border-b border-emerald-500/25 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-400/60 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(0,255,128,0.2)]">
+                <i class="fa-solid fa-shark text-neonGreen text-lg"></i>
+            </div>
+            <div class="truncate">
+                <div class="flex items-center gap-2">
+                    <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white">Arbitbet</h1>
+                    <span class="hidden sm:inline-flex items-center gap-1.5 text-[11px] mono px-2 py-0.5 rounded-full neon-pill">
+                        <span class="w-1.5 h-1.5 rounded-full bg-neonGreen animate-pulse"></span>
+                        ONLINE
+                    </span>
+                </div>
+                <p class="text-xs text-slate-400 truncate">Terminal de arbitragem e entradas</p>
+            </div>
+        </div>
+
+        <!-- Filtro de Período -->
+        <div class="hidden lg:flex items-center bg-voidbg p-1 rounded-xl border border-darkborder">
+            <button data-periodo="diario" class="periodo-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Diário</button>
+            <button data-periodo="mensal" class="periodo-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-neonGreen border border-emerald-400/40 transition">Mensal</button>
+            <button data-periodo="anual" class="periodo-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Anual</button>
+        </div>
+
+        <button id="openDrawer" aria-label="Abrir menu" title="Menu" class="rounded-xl px-3 py-2 border border-emerald-500/50 text-neonGreen text-lg">☰</button>
+        <!-- Ações Rápidas -->
+        <div class="flex items-center gap-2 shrink-0">
+            <button id="btnInstalar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" style="display:none"><i class="fa-solid fa-download"></i> Instalar</button><button id="btnMovimentacao" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40">Depósito / Saque</button><button id="btnExportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" title="Backup JSON">Backup</button><button id="btnSair" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder">Sair</button><button id="btnAbrirCasa" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40 hover:bg-emerald-500/10 transition flex items-center gap-1.5">
+                <i class="fa-solid fa-building-columns"></i>
+                <span class="hidden sm:inline">Nova Casa</span>
+            </button>
+            <button id="btnAbrirEntrada" class="neon-btn px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-plus"></i>
+                <span>Nova Entrada</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Barra de Período Mobile / Tablet -->
+    <div class="lg:hidden bg-darkbg border-b border-darkborder px-4 py-2 flex items-center justify-between gap-2">
+        <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Visão:</span>
+        <div class="flex items-center bg-voidbg p-1 rounded-lg border border-darkborder flex-1 max-w-xs">
+            <button data-periodo="diario" class="periodo-btn flex-1 py-1 rounded-md text-xs font-semibold text-slate-400">Diário</button>
+            <button data-periodo="mensal" class="periodo-btn flex-1 py-1 rounded-md text-xs font-semibold bg-emerald-500/15 text-neonGreen border border-emerald-400/40">Mensal</button>
+            <button data-periodo="anual" class="periodo-btn flex-1 py-1 rounded-md text-xs font-semibold text-slate-400">Anual</button>
+        </div>
+    </div>
+
+    <div id="drawerBackdrop" class="fixed inset-0 bg-black/70 z-40 hidden"></div>
+    <aside id="drawer" class="fixed inset-y-0 left-0 z-50 w-72 bg-darkbg border-r border-emerald-500/40 p-5 shadow-2xl transition-transform duration-200 -translate-x-full overflow-y-auto">
+      <div class="flex justify-between items-center mb-6"><strong class="text-neonGreen text-lg">☰ ARBITBET</strong><button id="closeDrawer" aria-label="Fechar menu" class="text-white text-xl">✕</button></div>
+      <nav class="flex flex-col gap-3 text-sm"><a class="drawer-link" href="#sec-resumo">📊 Visão geral</a><a class="drawer-link" href="#sec-grafico">📈 Gráficos de P&L</a><a class="drawer-link" href="#sec-calendario">📅 Calendário</a><a class="drawer-link" href="#sec-casas">🏦 Casas e contas</a><a class="drawer-link" href="#sec-entradas">⚡ Entradas e arbitragens</a><a class="drawer-link" href="#sec-financas">💳 Depósitos e saques</a></nav>
+      <div class="mt-7 border-t border-darkborder pt-5 space-y-3 text-xs text-slate-300"><p><strong>Sobre:</strong> Arbitbet — controle pessoal de apostas e arbitragem.</p><p><strong>Resultados:</strong> pendente, GREEN, RED, REEMBOLSO e CASHOUT.</p><p><strong>Dados:</strong> armazenados neste navegador. Faça backups frequentes.</p><p><strong>Segurança:</strong> senha local não substitui login seguro em servidor.</p></div>
+    </aside>
+    <!-- Layout Principal -->
+    <div class="flex-1 flex flex-col md:flex-row">
+        <!-- Menu Lateral (PC) -->
+        <aside class="hidden md:flex md:w-60 lg:w-64 bg-darkbg border-r border-darkborder flex-col justify-between p-4 shrink-0">
+            <nav class="space-y-1.5">
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-3 mb-2">Operação</div>
+                <a href="#sec-resumo" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/10 text-neonGreen border border-emerald-400/35 text-sm font-medium">
+                    <i class="fa-solid fa-chart-line w-4 text-center"></i>
+                    <span>Visão Geral</span>
+                </a>
+                <a href="#sec-grafico" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                    <i class="fa-solid fa-wave-square w-4 text-center"></i>
+                    <span>Evolução P&L</span>
+                </a>
+                <a href="#sec-calendario" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                    <i class="fa-solid fa-calendar-days w-4 text-center"></i>
+                    <span>Calendário Diário</span>
+                </a>
+                <a href="#sec-casas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                    <i class="fa-solid fa-wallet w-4 text-center"></i>
+                    <span>Casas & Contas</span>
+                </a>
+                <a href="#sec-entradas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                    <i class="fa-solid fa-bolt w-4 text-center"></i>
+                    <span>Entradas & Arb</span>
+                </a>
+            </nav>
+
+            <div class="p-3.5 rounded-xl bg-voidbg border border-emerald-500/25 space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-slate-400">Estratégia</span>
+                    <span class="mono text-neonGreen font-semibold">ARB + AVULSAS</span>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed">
+                    Dados locais neste dispositivo. Faça backup regularmente; para sincronização segura entre dispositivos será necessário configurar um servidor.
+                </p>
+                <button id="btnResetDemo" class="w-full mt-1 py-1.5 rounded-lg text-[11px] font-semibold text-slate-300 bg-darkcard hover:bg-slate-800 border border-darkborder transition">
+                    Restaurar Dados Exemplo
+                </button>
+            </div>
+        </aside>
+
+        <!-- Área de Conteúdo -->
+        <main class="flex-1 p-4 sm:p-6 space-y-6 max-w-[1600px] w-full mx-auto">
+
+            <!-- Banner de Feedback -->
+            <div id="feedbackBanner" class="hidden items-center justify-between px-4 py-3 rounded-xl bg-emerald-950/70 border border-neonGreen/60 text-neonGreen text-xs sm:text-sm">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span id="feedbackTexto">Operação concluída.</span>
+                </div>
+                <button id="btnFecharFeedback" class="text-neonGreen/70 hover:text-neonGreen">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- 1. Cards de Resumo -->
+            <section id="sec-resumo" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="neon-card rounded-2xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+                        <span>PATRIMÔNIO TOTAL</span>
+                        <i class="fa-solid fa-vault text-neonGreen"></i>
+                    </div>
+                    <div id="cardPatrimonio" class="mt-2 text-2xl sm:text-3xl font-bold mono text-white">R$ 0,00</div>
+                    <div id="cardPatrimonioSub" class="mt-2 text-xs text-slate-400 mono">Banca soma depósitos + P&L</div>
+                </div>
+
+                <div class="neon-card rounded-2xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+                        <span>LUCRO ACUMULADO (P&L)</span>
+                        <i class="fa-solid fa-sack-dollar text-neonGreen"></i>
+                    </div>
+                    <div id="cardLucro" class="mt-2 text-2xl sm:text-3xl font-bold mono text-neonGreen">+R$ 0,00</div>
+                    <div id="cardRoi" class="mt-2 text-xs text-slate-400 mono">ROI do período: 0,00%</div>
+                </div>
+
+                <div class="neon-card rounded-2xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+                        <span>TAXA DE ACERTO</span>
+                        <i class="fa-solid fa-bullseye text-neonGreen"></i>
+                    </div>
+                    <div id="cardWinrate" class="mt-2 text-2xl sm:text-3xl font-bold mono text-white">0,0%</div>
+                    <div id="cardContagemGR" class="mt-2 text-xs mono">
+                        <span class="text-neonGreen font-semibold">0 GREEN</span>
+                        <span class="text-slate-500"> / </span>
+                        <span class="text-neonRed font-semibold">0 RED</span>
+                    </div>
+                </div>
+
+                <div class="neon-card rounded-2xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
+                        <span>MELHOR ENTRADA</span>
+                        <i class="fa-solid fa-trophy text-neonGreen"></i>
+                    </div>
+                    <div id="cardMelhorEntrada" class="mt-2 text-2xl sm:text-3xl font-bold mono text-neonGreen">+R$ 0,00</div>
+                    <div id="cardMelhorDetalhe" class="mt-2 text-xs text-slate-400 truncate">Nenhuma entrada registrada</div>
+                </div>
+            </section>
+
+            <!-- 2. Gráfico de Evolução + Calendário P&L -->
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                <!-- Gráfico -->
+                <section id="sec-grafico" class="xl:col-span-6 neon-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-area text-neonGreen"></i>
+                                Evolução do Patrimônio & Lucro Acumulado
+                            </h2>
+                            <p class="text-xs text-slate-400">Curva progressiva das operações registradas</p>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs mono">
+                            <span class="flex items-center gap-1.5 text-neonGreen">
+                                <span class="w-2.5 h-0.5 bg-neonGreen inline-block"></span> Lucro Acum.
+                            </span>
+                            <span class="flex items-center gap-1.5 text-amber-300">
+                                <span class="w-2.5 h-0.5 bg-amber-300 inline-block"></span> Patrimônio
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="relative w-full h-64 sm:h-72 bg-voidbg/80 rounded-xl border border-darkborder p-2">
+                        <canvas id="graficoEvolucao" class="w-full h-full block"></canvas>
+                    </div>
+                </section>
+
+                <!-- 3. Calendário Mensal de P&L -->
+                <section id="sec-calendario" class="xl:col-span-6 neon-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-check text-neonGreen"></i>
+                                Calendário Diário de Entradas & P&L
+                            </h2>
+                            <p id="resumoMesCalendario" class="text-xs text-slate-400 mono">Carregando resumo mensal...</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btnMesAnterior" class="w-8 h-8 rounded-lg bg-voidbg border border-darkborder hover:border-neonGreen/60 text-slate-300 hover:text-neonGreen flex items-center justify-center transition" aria-label="Mês anterior">
+                                <i class="fa-solid fa-chevron-left text-xs"></i>
+                            </button>
+                            <span id="labelMesAtual" class="text-xs sm:text-sm font-bold mono text-white min-w-[125px] text-center">Novembro 2026</span>
+                            <button id="btnMesProximo" class="w-8 h-8 rounded-lg bg-voidbg border border-darkborder hover:border-neonGreen/60 text-slate-300 hover:text-neonGreen flex items-center justify-center transition" aria-label="Próximo mês">
+                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-semibold text-slate-400 mb-1.5">
+                        <div>DOM</div>
+                        <div>SEG</div>
+                        <div>TER</div>
+                        <div>QUA</div>
+                        <div>QUI</div>
+                        <div>SEX</div>
+                        <div>SÁB</div>
+                    </div>
+                    <div id="gridCalendario" class="grid grid-cols-7 gap-1.5 flex-1"></div>
+                </section>
+            </div>
+
+            <!-- 4. Casas de Apostas / Contas -->
+            <section class="neon-card rounded-2xl p-4 sm:p-5"><h2 class="font-bold text-white mb-3">Controle de depósitos e saques</h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm"><div>Depósitos<div id="totalDepositos" class="mono text-neonGreen font-bold"></div></div><div>Saques<div id="totalSaques" class="mono text-white font-bold"></div></div><div>Saldo disponível<div id="totalDisponivel" class="mono text-white font-bold"></div></div><div>Valores em aberto<div id="totalReservado" class="mono text-amber-300 font-bold"></div></div></div><div id="historicoMov" class="text-xs text-slate-400 mt-4"></div></section><section id="sec-casas" class="neon-card rounded-2xl p-4 sm:p-5">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-neonGreen"></i>
+                            Casas de Apostas & Contas Ativas
+                        </h2>
+                        <p class="text-xs text-slate-400">Cadastre novas casas e contas de colaboradores para arbitragem e entradas avulsas</p>
+                    </div>
+                    <button id="btnNovaCasaSecao" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 text-neonGreen border border-emerald-400/45 hover:bg-emerald-500/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Adicionar Casa / Conta</span>
+                    </button>
+                </div>
+
+                <div id="listaCasas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+            </section>
+
+            <!-- 5. Tabela de Entradas Recentes -->
+            <section id="sec-entradas" class="neon-card rounded-2xl p-4 sm:p-5">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-ul text-neonGreen"></i>
+                            Registro de Entradas & Arbitragens
+                        </h2>
+                        <p class="text-xs text-slate-400">Destaques automáticos em verde para GREEN e vermelho para RED</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="filtroCasa" class="bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-neonGreen">
+                            <option value="TODAS">Todas as casas</option>
+                        </select>
+                        <select id="filtroResultado" class="bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-neonGreen">
+                            <option value="TODOS">Todos (GREEN / RED)</option>
+                            <option value="GREEN">Apenas GREEN</option>
+                            <option value="RED">Apenas RED</option><option value="PENDENTE">Pendentes</option><option value="ANULADA">Reembolsos</option><option value="REEMBOLSO">Reembolsos (novo)</option><option value="CASHOUT">Cashouts</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                    <table class="w-full text-left border-collapse min-w-[740px]">
+                        <thead>
+                            <tr class="bg-voidbg text-[11px] uppercase tracking-wider text-slate-400 border-b border-darkborder">
+                                <th class="py-3 px-4">Data</th>
+                                <th class="py-3 px-4">Casa / Conta</th>
+                                <th class="py-3 px-4">Mercado / Tipo</th>
+                                <th class="py-3 px-4 text-right">Odd</th>
+                                <th class="py-3 px-4 text-right">Stake</th>
+                                <th class="py-3 px-4 text-center">Resultado</th>
+                                <th class="py-3 px-4 text-right">P&L</th>
+                                <th class="py-3 px-4 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaEntradas" class="divide-y divide-darkborder/60 text-xs sm:text-sm mono"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="loginOverlay" class="fixed inset-0 z-[90] bg-voidbg flex items-center justify-center p-5"><form id="formLogin" class="neon-card rounded-2xl p-6 w-full max-w-sm space-y-4"><h2 class="text-2xl font-bold text-neonGreen">Arbitbet</h2><p id="loginAjuda" class="text-sm text-slate-300">Crie uma senha para bloquear o acesso neste navegador.</p><input id="loginSenha" type="password" minlength="8" required autocomplete="current-password" placeholder="Senha (mínimo 8 caracteres)" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-3 text-white"><button class="neon-btn w-full py-3 rounded-xl">Entrar / Configurar</button><p id="loginErro" class="text-xs text-neonRed"></p><p class="text-xs text-slate-400">Bloqueio local, não é autenticação de servidor. Para uso em múltiplos aparelhos, configure backend com login real.</p></form></div>
+<div id="modalMov" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><form id="formMov" class="neon-card rounded-2xl p-5 w-full max-w-md space-y-3"><h3 class="text-white font-bold">Registrar depósito ou saque</h3><label class="block text-xs">Movimentação<select id="movTipo" class="w-full bg-voidbg p-3 rounded-lg"><option value="DEPOSITO">Depósito</option><option value="SAQUE">Saque</option></select></label><label class="block text-xs">Casa / Conta<select id="movCasa" required class="w-full bg-voidbg p-3 rounded-lg"></select></label><label class="block text-xs">Valor (R$)<input id="movValor" type="number" step="0.01" min="0.01" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Data<input id="movData" type="date" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Observação<input id="movObs" maxlength="160" class="w-full bg-voidbg p-3 rounded-lg"></label><div class="flex gap-2"><button type="button" id="fecharMov" class="bg-slate-700 rounded-lg p-3 flex-1">Cancelar</button><button class="neon-btn rounded-lg p-3 flex-1">Salvar</button></div></form></div>
+<!-- Modal: Nova Entrada -->
+    <div id="modalEntrada" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="neon-card rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-darkborder pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-neonGreen"></i>
+                    <span id="tituloEntrada">Registrar Nova Entrada</span>
+                </h3>
+                <button id="fecharModalEntrada" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="formEntrada" class="space-y-3.5"><input type="hidden" id="entradaEditId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Data</label>
+                        <input id="entradaData" type="date" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm mono text-white focus:outline-none focus:border-neonGreen" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Casa / Conta</label>
+                        <select id="entradaCasa" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neonGreen"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Tipo / Mercado (Ex: Arbitragem Futebol, Entrada Avulsa NBA)</label>
+                    <input id="entradaMercado" type="text" required placeholder="Ex: Arbitragem Over 2.5" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neonGreen" />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Odd</label>
+                        <input id="entradaOdd" type="number" step="0.01" min="1.01" value="1.95" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm mono text-white focus:outline-none focus:border-neonGreen" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Stake (R$)</label>
+                        <input id="entradaStake" type="number" step="0.01" min="0.01" value="150.00" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm mono text-white focus:outline-none focus:border-neonGreen" />
+                    </div>
+                    <div class="flex items-end"><span class="rounded-xl border border-amber-500/40 text-amber-300 text-xs p-3 w-full text-center">● PENDENTE</span></div>
+                </div>
+
+                <div class="bg-voidbg border border-darkborder rounded-xl p-3 flex items-center justify-between">
+                    <span class="text-xs text-slate-400">Lucro potencial se GREEN:</span>
+                    <span id="previewPnlEntrada" class="text-sm font-bold mono text-neonGreen">+R$ 142,50</span>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="cancelarModalEntrada" class="px-4 py-2 rounded-xl text-xs font-semibold bg-voidbg text-slate-300 border border-darkborder hover:bg-slate-800 transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="neon-btn px-4 py-2 rounded-xl text-xs">
+                        Salvar Entrada
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Nova Casa / Conta -->
+    <div id="modalCasa" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="neon-card rounded-2xl w-full max-w-md p-5 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-darkborder pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-building-columns text-neonGreen"></i>
+                    <span id="tituloCasa">Cadastrar Casa / Conta</span>
+                </h3>
+                <button id="fecharModalCasa" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="formCasa" class="space-y-3.5"><input type="hidden" id="casaEditId">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nome da Casa</label>
+                    <input id="casaNome" type="text" required placeholder="Ex: 99play, Br365, Partiubet" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neonGreen" />
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Identificação da Conta / Colaborador</label>
+                    <input id="casaConta" type="text" required placeholder="Ex: Conta Principal, Conta Edmilson, Conta Jardeilson" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-neonGreen" />
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Banca Inicial / Depósito (R$)</label>
+                    <input id="casaBanca" type="number" step="0.01" min="0" value="1000.00" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm mono text-white focus:outline-none focus:border-neonGreen" />
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="cancelarModalCasa" class="px-4 py-2 rounded-xl text-xs font-semibold bg-voidbg text-slate-300 border border-darkborder hover:bg-slate-800 transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="neon-btn px-4 py-2 rounded-xl text-xs">
+                        Adicionar Casa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<div id="modalLiquidar" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><div class="neon-card rounded-2xl w-full max-w-md p-5 space-y-4"><div class="flex justify-between"><h3 class="font-bold text-white">Finalizar entrada</h3><button id="fecharLiquidar" class="text-white">✕</button></div><p id="liquidarDescricao" class="text-xs text-slate-300"></p><form id="formLiquidar" class="space-y-4"><input type="hidden" id="liquidarId"><label class="block text-xs text-slate-300">Situação<select id="liquidarResultado" class="w-full mt-1 bg-voidbg text-white border border-darkborder rounded-xl p-3"><option value="GREEN">GREEN</option><option value="RED">RED</option><option value="REEMBOLSO">REEMBOLSO (stake devolvida)</option><option value="CASHOUT">CASHOUT</option></select></label><label id="liquidarRetornoWrap" class="hidden text-xs text-slate-300">Valor recebido no cashout (R$)<input type="number" min="0" step="0.01" id="liquidarRetorno" class="w-full mt-1 bg-voidbg text-white border border-darkborder rounded-xl p-3"></label><p id="liquidarPreview" class="mono text-neonGreen text-sm"></p><button type="submit" class="neon-btn rounded-xl px-4 py-3 w-full">Confirmar resultado</button></form></div></div>
+    <script>
+        (function () {
+            const STORAGE_KEY = 'arbitbet_terminal_v2';
+            const OLD_KEY = 'arbitbet_terminal_v1';
+
+            const dadosIniciais = {
+                casas: [
+                    { id: 'c1', nome: '99play', conta: 'Conta Principal', bancaInicial: 2500.00 },
+                    { id: 'c2', nome: 'Br365', conta: 'Conta Operação 02', bancaInicial: 3200.00 },
+                    { id: 'c3', nome: 'Partiubet', conta: 'Conta Parceiro 03', bancaInicial: 1800.00 }
+                ],
+                entradas: [
+                    { id: 'e1', data: '2026-11-18', casaId: 'c2', mercado: 'Arbitragem Futebol — Over 2.5', odd: 2.10, stake: 300.00, resultado: 'GREEN' },
+                    { id: 'e2', data: '2026-11-18', casaId: 'c1', mercado: 'Entrada Avulsa Basquete — Handicap', odd: 1.90, stake: 150.00, resultado: 'GREEN' },
+                    { id: 'e3', data: '2026-11-16', casaId: 'c3', mercado: 'Arbitragem Tênis — Set 1', odd: 1.85, stake: 200.00, resultado: 'RED' },
+                    { id: 'e4', data: '2026-11-14', casaId: 'c2', mercado: 'Entrada Avulsa Futebol — Ambas Marcam', odd: 2.25, stake: 250.00, resultado: 'GREEN' },
+                    { id: 'e5', data: '2026-11-11', casaId: 'c1', mercado: 'Arbitragem Escanteios — Live', odd: 2.05, stake: 220.00, resultado: 'GREEN' },
+                    { id: 'e6', data: '2026-11-07', casaId: 'c3', mercado: 'Entrada Avulsa Futebol — Under 3.5', odd: 1.75, stake: 180.00, resultado: 'RED' },
+                    { id: 'e7', data: '2026-11-04', casaId: 'c2', mercado: 'Arbitragem Dupla Chance', odd: 1.92, stake: 400.00, resultado: 'GREEN' }
+                ]
+            };
+
+            let estado = carregarEstado();
+            estado.movimentacoes ||= [];
+            let periodoAtual = 'mensal';
+            let mesExibido = new Date(2026, 10, 1); // Novembro 2026
+
+            function carregarEstado() {
+                try {
+                    const salvo = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_KEY);
+                    if (!salvo) return JSON.parse(JSON.stringify(dadosIniciais));
+                    const parsed = JSON.parse(salvo);
+                    if (!Array.isArray(parsed.casas) || !Array.isArray(parsed.entradas)) {
+                        return JSON.parse(JSON.stringify(dadosIniciais));
+                    }
+                    return { ...parsed, movimentacoes: parsed.movimentacoes || [] };
+                } catch (err) {
+                    console.error('Erro ao ler dados locais:', err);
+                    return JSON.parse(JSON.stringify(dadosIniciais));
+                }
+            }
+
+            function salvarEstado() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+                } catch (err) {
+                    console.error('Erro ao salvar dados locais:', err);
+                }
+            }
+
+            function dataLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+            function formatBRL(valor) {
+                return new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                }).format(Number(valor) || 0);
+            }
+
+            function formatPnlBRL(valor) {
+                const num = Number(valor) || 0;
+                const prefixo = num > 0 ? '+' : '';
+                return prefixo + formatBRL(num);
+            }
+
+            function calcularPnlEntrada(entrada) {
+                const odd = Number(entrada.odd) || 1;
+                const stake = Number(entrada.stake) || 0;
+                if (['PENDENTE','ANULADA','REEMBOLSO'].includes(entrada.resultado)) return 0;
+                if (entrada.resultado === 'CASHOUT') return Number((Number(entrada.retornoRecebido||0)-stake).toFixed(2));
+                if (entrada.resultado === 'GREEN') {
+                    return Number((stake * (odd - 1)).toFixed(2));
+                }
+                return Number((-stake).toFixed(2));
+            }
+
+            function mostrarFeedback(texto) {
+                const banner = document.getElementById('feedbackBanner');
+                const msg = document.getElementById('feedbackTexto');
+                msg.textContent = texto;
+                banner.classList.remove('hidden');
+                banner.classList.add('flex');
+                clearTimeout(mostrarFeedback._timer);
+                mostrarFeedback._timer = setTimeout(() => {
+                    banner.classList.add('hidden');
+                    banner.classList.remove('flex');
+                }, 3600);
+            }
+
+            function filtrarEntradasPorPeriodo(entradas) {
+                const ref = new Date();
+                const anoRef = ref.getFullYear();
+                const mesRef = ref.getMonth();
+                const dataIsoRef = dataLocal();
+
+                return entradas.filter((item) => {
+                    if (!item.data || item.resultado==='PENDENTE') return false;
+                    const dataResultado=item.finalizadaEm||item.data;
+                    if (periodoAtual === 'diario') {
+                        return dataResultado === dataIsoRef;
+                    }
+                    if (periodoAtual === 'mensal') {
+                        const [y, m] = dataResultado.split('-').map(Number);
+                        return y === anoRef && (m - 1) === mesRef;
+                    }
+                    const [y] = dataResultado.split('-').map(Number);
+                    return y === anoRef;
+                });
+            }
+
+            function obterCasaPorId(id) {
+                return estado.casas.find((c) => c.id === id) || { nome: 'Casa Removida', conta: 'Conta', bancaInicial: 0 };
+            }
+
+            function renderizarTudo() {
+                renderizarCards();
+                renderizarCasas();
+                renderizarFiltrosTabela();
+                renderizarTabelaEntradas();
+                renderizarCalendario();
+                renderizarGrafico();
+                renderizarMovimentacoes();
+            }
+
+            function renderizarCards() {
+                const entradasPeriodo = filtrarEntradasPorPeriodo(estado.entradas);
+                const bancaBase = estado.casas.reduce((acc, c) => acc + (Number(c.bancaInicial) || 0), 0);
+                const pnlTotalHistorico = estado.entradas.reduce((acc, e) => acc + calcularPnlEntrada(e), 0);
+                const patrimonioTotal = bancaBase + pnlTotalHistorico + estado.movimentacoes.reduce((a,m)=>a+(m.tipo==='DEPOSITO'?m.valor:-m.valor),0);
+
+                const pnlPeriodo = entradasPeriodo.reduce((acc, e) => acc + calcularPnlEntrada(e), 0);
+                const stakePeriodo = entradasPeriodo.filter(e=>!['PENDENTE','ANULADA','REEMBOLSO'].includes(e.resultado)).reduce((acc, e) => acc + (Number(e.stake) || 0), 0);
+                const roiPeriodo = stakePeriodo > 0 ? (pnlPeriodo / stakePeriodo) * 100 : 0;
+
+                const greens = entradasPeriodo.filter((e) => calcularPnlEntrada(e)>0).length;
+                const reds = entradasPeriodo.filter((e) => calcularPnlEntrada(e)<0).length;
+                const totalOps = greens + reds;
+                const winrate = totalOps > 0 ? (greens / totalOps) * 100 : 0;
+
+                let melhorPnl = null;
+                let melhorItem = null;
+                entradasPeriodo.forEach((e) => {
+                    const p = calcularPnlEntrada(e);
+                    if (melhorPnl === null || p > melhorPnl) {
+                        melhorPnl = p;
+                        melhorItem = e;
+                    }
+                });
+
+                document.getElementById('cardPatrimonio').textContent = formatBRL(patrimonioTotal);
+                document.getElementById('cardPatrimonioSub').textContent =
+                    `Banca base ${formatBRL(bancaBase)} • P&L geral ${formatPnlBRL(pnlTotalHistorico)}`;
+
+                const elLucro = document.getElementById('cardLucro');
+                elLucro.textContent = formatPnlBRL(pnlPeriodo);
+                elLucro.className = `mt-2 text-2xl sm:text-3xl font-bold mono ${pnlPeriodo >= 0 ? 'text-neonGreen' : 'text-neonRed'}`;
+
+                document.getElementById('cardRoi').textContent =
+                    `ROI (${periodoAtual}): ${roiPeriodo >= 0 ? '+' : ''}${roiPeriodo.toFixed(2).replace('.', ',')}%`;
+
+                document.getElementById('cardWinrate').textContent = `${winrate.toFixed(1).replace('.', ',')}%`;
+                document.getElementById('cardContagemGR').innerHTML =
+                    `<span class="text-neonGreen font-semibold">${greens} GREEN</span> <span class="text-slate-500">/</span> <span class="text-neonRed font-semibold">${reds} RED</span>`;
+
+                const elMelhor = document.getElementById('cardMelhorEntrada');
+                const elMelhorDet = document.getElementById('cardMelhorDetalhe');
+                if (melhorItem && melhorPnl !== null) {
+                    const casa = obterCasaPorId(melhorItem.casaId);
+                    elMelhor.textContent = formatPnlBRL(melhorPnl);
+                    elMelhor.className = `mt-2 text-2xl sm:text-3xl font-bold mono ${melhorPnl >= 0 ? 'text-neonGreen' : 'text-neonRed'}`;
+                    elMelhorDet.textContent = `${casa.nome} (${casa.conta}) • ${melhorItem.mercado}`;
+                } else {
+                    elMelhor.textContent = formatBRL(0);
+                    elMelhor.className = 'mt-2 text-2xl sm:text-3xl font-bold mono text-slate-400';
+                    elMelhorDet.textContent = 'Sem entradas no período selecionado';
+                }
+            }
+
+            function renderizarCasas() {
+                const container = document.getElementById('listaCasas');
+                container.innerHTML = '';
+
+                estado.casas.forEach((casa) => {
+                    const entradasCasa = estado.entradas.filter((e) => e.casaId === casa.id);
+                    const pnlCasa = entradasCasa.reduce((acc, e) => acc + calcularPnlEntrada(e), 0);
+                    const saldoAtual = saldoCasa(casa.id);
+                    const isPositivo = pnlCasa >= 0;
+                    const reservado = estado.entradas.filter(e=>e.casaId===casa.id && e.resultado==='PENDENTE').reduce((a,e)=>a+Number(e.stake),0);
+
+                    const card = document.createElement('div');
+                    card.className = 'rounded-xl bg-voidbg/90 border border-emerald-500/35 hover:border-neonGreen/75 p-4 flex flex-col justify-between gap-3 transition';
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <span class="inline-flex items-center gap-1.5 text-sm font-bold text-white">
+                                        <span class="w-2 h-2 rounded-full bg-neonGreen"></span>
+                                        ${escapeHtml(casa.nome)}
+                                    </span>
+                                    <p class="text-xs text-slate-400 mt-0.5">${escapeHtml(casa.conta)}</p>
+                                </div>
+                                <span class="text-[11px] mono px-2 py-0.5 rounded-md ${isPositivo ? 'status-green' : 'status-red'} font-semibold">
+                                    ${formatPnlBRL(pnlCasa)}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="pt-2.5 border-t border-darkborder flex items-end justify-between text-xs mono">
+                            <div>
+                                <span class="block text-[10px] text-slate-500 uppercase">Saldo Atual</span>
+                                <span class="text-sm font-bold text-white">${formatBRL(saldoAtual)}</span><span class="block text-[10px] text-amber-300">Disponível: ${formatBRL(saldoAtual-reservado)}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-[10px] text-slate-500 uppercase">Entradas</span>
+                                <span class="text-slate-300">${entradasCasa.length} ops</span>
+                            </div>
+                        </div>
+                    `;
+                    const editar=document.createElement('button');editar.type='button';editar.className='text-xs text-sky-300 border border-sky-500/40 rounded-lg py-2';editar.textContent='✎ Editar casa / conta';editar.addEventListener('click',()=>{document.getElementById('casaEditId').value=casa.id;document.getElementById('casaNome').value=casa.nome;document.getElementById('casaConta').value=casa.conta;document.getElementById('casaBanca').value=casa.bancaInicial;document.getElementById('tituloCasa').textContent='Editar Casa / Conta';abrirModal('modalCasa');});card.appendChild(editar);
+                    container.appendChild(card);
+                });
+            }
+
+            function renderizarFiltrosTabela() {
+                const selectFiltro = document.getElementById('filtroCasa');
+                const valorAtual = selectFiltro.value;
+                selectFiltro.innerHTML = '<option value="TODAS">Todas as casas</option>';
+
+                estado.casas.forEach((casa) => {
+                    const opt = document.createElement('option');
+                    opt.value = casa.id;
+                    opt.textContent = `${casa.nome} — ${casa.conta}`;
+                    selectFiltro.appendChild(opt);
+                });
+
+                if ([...selectFiltro.options].some((o) => o.value === valorAtual)) {
+                    selectFiltro.value = valorAtual;
+                }
+
+                const selectModal = document.getElementById('entradaCasa');
+                selectModal.innerHTML = '';
+                estado.casas.forEach((casa) => {
+                    const opt = document.createElement('option');
+                    opt.value = casa.id;
+                    opt.textContent = `${casa.nome} (${casa.conta})`;
+                    selectModal.appendChild(opt);
+                });
+            }
+
+            function renderizarTabelaEntradas() {
+                const corpo = document.getElementById('corpoTabelaEntradas');
+                const casaFiltro = document.getElementById('filtroCasa').value;
+                const resFiltro = document.getElementById('filtroResultado').value;
+
+                const ordenadas = [...estado.entradas]
+                    .filter((e) => (casaFiltro === 'TODAS' ? true : e.casaId === casaFiltro))
+                    .filter((e) => (resFiltro === 'TODOS' ? true : e.resultado === resFiltro))
+                    .sort((a, b) => (a.data < b.data ? 1 : -1));
+
+                corpo.innerHTML = '';
+
+                if (ordenadas.length === 0) {
+                    corpo.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="py-8 text-center text-slate-400">
+                                Nenhuma entrada encontrada para os filtros selecionados.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                ordenadas.forEach((item) => {
+                    const casa = obterCasaPorId(item.casaId);
+                    const pnl = calcularPnlEntrada(item);
+                    const isGreen = item.resultado === 'GREEN';
+                    const isPending = item.resultado === 'PENDENTE';
+
+                    const tr = document.createElement('tr');
+                    tr.className = `${isPending ? 'border-l-4 border-amber-400' : (pnl > 0 ? 'row-green' : pnl < 0 ? 'row-red' : 'border-l-4 border-slate-500')} hover:brightness-110 transition`;
+
+                    const partesData = item.data.split('-');
+                    const dataFmt = partesData.length === 3 ? `${partesData[2]}/${partesData[1]}/${partesData[0]}` : item.data;
+
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 text-slate-300 whitespace-nowrap">${escapeHtml(dataFmt)}</td>
+                        <td class="py-3 px-4 whitespace-nowrap">
+                            <div class="font-semibold text-white">${escapeHtml(casa.nome)}</div>
+                            <div class="text-[11px] text-slate-400">${escapeHtml(casa.conta)}</div>
+                        </td>
+                        <td class="py-3 px-4 text-slate-200">${escapeHtml(item.mercado)}</td>
+                        <td class="py-3 px-4 text-right text-slate-200">${Number(item.odd).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-right text-slate-200">${formatBRL(item.stake)}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide ${isGreen ? 'status-green' : 'status-red'}">
+                                ${escapeHtml(item.resultado)}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-right font-bold ${isGreen ? 'text-neonGreen' : 'text-neonRed'}">
+                            ${formatPnlBRL(pnl)}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button data-edit="${escapeHtml(item.id)}" class="btn-editar-entrada text-sky-300 px-2 py-1" title="Editar entrada"><i class="fa-solid fa-pen"></i></button>${isPending ? `<button data-final="${escapeHtml(item.id)}" class="btn-finalizar-entrada text-neonGreen px-2 py-1" title="Finalizar">Finalizar</button>` : ''}<button data-del="${escapeHtml(item.id)}" class="btn-excluir-entrada text-slate-400 hover:text-neonRed px-2 py-1 rounded transition" title="Excluir entrada">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </td>
+                    `;
+                    corpo.appendChild(tr);
+                });
+
+                document.querySelectorAll('.btn-finalizar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.final);if(!e)return;document.getElementById('liquidarId').value=e.id;document.getElementById('liquidarDescricao').textContent=e.mercado+' — '+obterCasaPorId(e.casaId).nome+' — Stake '+formatBRL(e.stake);document.getElementById('liquidarResultado').value='GREEN';document.getElementById('liquidarRetorno').value='';atualizarLiquidacao();abrirModal('modalLiquidar');}));
+                document.querySelectorAll('.btn-editar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.edit);if(!e)return;document.getElementById('entradaEditId').value=e.id;document.getElementById('entradaData').value=e.data;document.getElementById('entradaCasa').value=e.casaId;document.getElementById('entradaMercado').value=e.mercado;document.getElementById('entradaOdd').value=e.odd;document.getElementById('entradaStake').value=e.stake;document.getElementById('tituloEntrada').textContent='Editar Entrada';atualizarPreviewEntrada();abrirModal('modalEntrada');}));
+                document.querySelectorAll('.btn-excluir-entrada').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const id = btn.getAttribute('data-del');
+                        if(!confirm('Excluir esta entrada e recalcular os saldos?'))return;estado.entradas = estado.entradas.filter((e) => e.id !== id);
+                        salvarEstado();
+                        renderizarTudo();
+                        mostrarFeedback('Entrada removida do terminal.');
+                    });
+                });
+            }
+
+            function renderizarCalendario() {
+                const grid = document.getElementById('gridCalendario');
+                const labelMes = document.getElementById('labelMesAtual');
+                const resumoMes = document.getElementById('resumoMesCalendario');
+
+                const ano = mesExibido.getFullYear();
+                const mes = mesExibido.getMonth();
+
+                const nomeMes = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(mesExibido);
+                labelMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+                const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+                const totalDiasMes = new Date(ano, mes + 1, 0).getDate();
+
+                const pnlPorDia = {};
+                const qtdPorDia = {};
+                let totalMes = 0;
+                let opsMes = 0;
+
+                estado.entradas.forEach((e) => {
+                    if (!e.data) return;
+                    const [y, m, d] = (e.finalizadaEm||e.data).split('-').map(Number);
+                    if (y === ano && (m - 1) === mes) {
+                        const pnl = calcularPnlEntrada(e);
+                        if(e.resultado==='PENDENTE')return;
+                        pnlPorDia[d] = (pnlPorDia[d] || 0) + pnl;
+                        qtdPorDia[d] = (qtdPorDia[d] || 0) + 1;
+                        totalMes += pnl;
+                        opsMes += 1;
+                    }
+                });
+
+                resumoMes.innerHTML =
+                    `P&L do mês: <span class="${totalMes >= 0 ? 'text-neonGreen' : 'text-neonRed'} font-bold">${formatPnlBRL(totalMes)}</span> • ${opsMes} entradas`;
+
+                grid.innerHTML = '';
+
+                for (let i = 0; i < primeiroDiaSemana; i++) {
+                    const vazio = document.createElement('div');
+                    vazio.className = 'h-16 sm:h-20 rounded-xl bg-voidbg/35 border border-darkborder/40';
+                    grid.appendChild(vazio);
+                }
+
+                for (let dia = 1; dia <= totalDiasMes; dia++) {
+                    const temOp = Object.prototype.hasOwnProperty.call(pnlPorDia, dia);
+                    const val = pnlPorDia[dia] || 0;
+                    const qtd = qtdPorDia[dia] || 0;
+
+                    let estiloDia = 'bg-voidbg/75 border-darkborder/70 text-slate-400';
+                    let textoPnl = '';
+
+                    if (temOp && val > 0) {
+                        estiloDia = 'bg-emerald-500/12 border-neonGreen/60 text-white shadow-[0_0_12px_rgba(0,255,128,0.12)]';
+                        textoPnl = `<span class="text-[10px] sm:text-[11px] font-bold mono text-neonGreen truncate">${formatPnlBRL(val)}</span>`;
+                    } else if (temOp && val < 0) {
+                        estiloDia = 'bg-rose-500/12 border-neonRed/60 text-white shadow-[0_0_12px_rgba(255,59,107,0.12)]';
+                        textoPnl = `<span class="text-[10px] sm:text-[11px] font-bold mono text-neonRed truncate">${formatPnlBRL(val)}</span>`;
+                    } else if (temOp && val === 0) {
+                        estiloDia = 'bg-slate-800/70 border-slate-500/50 text-white';
+                        textoPnl = `<span class="text-[10px] font-bold mono text-slate-300">R$ 0,00</span>`;
+                    }
+
+                    const cel = document.createElement('div');
+                    cel.className = `h-16 sm:h-20 rounded-xl border p-1.5 sm:p-2 flex flex-col justify-between transition ${estiloDia}`;
+                    cel.innerHTML = `
+                        <div class="flex items-center justify-between text-[11px] mono">
+                            <span class="font-bold">${dia}</span>
+                            ${qtd > 0 ? `<span class="text-[9px] px-1 rounded bg-white/10 text-slate-200">${qtd}x</span>` : ''}
+                        </div>
+                        ${textoPnl}
+                    `;
+                    grid.appendChild(cel);
+                }
+            }
+
+            function renderizarGrafico() {
+                const canvas = document.getElementById('graficoEvolucao');
+                const parent = canvas.parentElement;
+                const dpr = window.devicePixelRatio || 1;
+                const width = parent.clientWidth - 16;
+                const height = parent.clientHeight - 16;
+
+                if (width <= 0 || height <= 0) return;
+
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+
+                const ctx = canvas.getContext('2d');
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                ctx.clearRect(0, 0, width, height);
+
+                const ordenadas = estado.entradas.filter(e=>e.resultado!=='PENDENTE').map(e=>({...e,data:e.finalizadaEm||e.data})).sort((a,b)=>a.data.localeCompare(b.data));
+                const bancaBase = estado.casas.reduce((acc, c) => acc + (Number(c.bancaInicial) || 0), 0);
+
+                const pontosLucro = [0];
+                const pontosPatrimonio = [bancaBase];
+                const labels = ['Início'];
+
+                let acumLucro = 0;
+                ordenadas.forEach((e, idx) => {
+                    acumLucro += calcularPnlEntrada(e);
+                    pontosLucro.push(acumLucro);
+                    pontosPatrimonio.push(bancaBase + acumLucro);
+                    labels.push(e.data ? e.data.slice(5) : `#${idx + 1}`);
+                });
+
+                const padLeft = 56;
+                const padRight = 16;
+                const padTop = 18;
+                const padBottom = 28;
+                const plotW = Math.max(20, width - padLeft - padRight);
+                const plotH = Math.max(20, height - padTop - padBottom);
+
+                const todosValores = [...pontosLucro, ...pontosPatrimonio];
+                let minVal = Math.min(...todosValores);
+                let maxVal = Math.max(...todosValores);
+                if (minVal === maxVal) {
+                    minVal -= 100;
+                    maxVal += 100;
+                }
+                const margem = (maxVal - minVal) * 0.12;
+                minVal -= margem;
+                maxVal += margem;
+
+                // Linhas de grade horizontais
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+                ctx.lineWidth = 1;
+                ctx.font = '10px "JetBrains Mono", monospace';
+                ctx.fillStyle = '#94a3b8';
+
+                const linhasGrade = 4;
+                for (let i = 0; i <= linhasGrade; i++) {
+                    const ratio = i / linhasGrade;
+                    const y = padTop + plotH - ratio * plotH;
+                    const valLabel = minVal + ratio * (maxVal - minVal);
+
+                    ctx.beginPath();
+                    ctx.moveTo(padLeft, y);
+                    ctx.lineTo(padLeft + plotW, y);
+                    ctx.stroke();
+
+                    ctx.fillText(`R$${Math.round(valLabel)}`, 4, y + 3);
+                }
+
+                const getX = (idx) => {
+                    if (pontosLucro.length <= 1) return padLeft + plotW / 2;
+                    return padLeft + (idx / (pontosLucro.length - 1)) * plotW;
+                };
+
+                const getY = (val) => {
+                    return padTop + plotH - ((val - minVal) / (maxVal - minVal)) * plotH;
+                };
+
+                // Área sob linha de Lucro Acumulado
+                ctx.beginPath();
+                pontosLucro.forEach((val, idx) => {
+                    const x = getX(idx);
+                    const y = getY(val);
+                    if (idx === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.lineTo(getX(pontosLucro.length - 1), padTop + plotH);
+                ctx.lineTo(getX(0), padTop + plotH);
+                ctx.closePath();
+
+                const grad = ctx.createLinearGradient(0, padTop, 0, padTop + plotH);
+                grad.addColorStop(0, 'rgba(0, 255, 128, 0.24)');
+                grad.addColorStop(1, 'rgba(0, 255, 128, 0.0)');
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Linha Patrimônio
+                ctx.beginPath();
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 2;
+                pontosPatrimonio.forEach((val, idx) => {
+                    const x = getX(idx);
+                    const y = getY(val);
+                    if (idx === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+
+                // Linha Lucro Acumulado
+                ctx.beginPath();
+                ctx.strokeStyle = '#00ff80';
+                ctx.lineWidth = 2.5;
+                pontosLucro.forEach((val, idx) => {
+                    const x = getX(idx);
+                    const y = getY(val);
+                    if (idx === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+
+                // Pontos e rótulos do eixo X
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px "JetBrains Mono", monospace';
+                const passoLabel = Math.max(1, Math.ceil(labels.length / 6));
+
+                pontosLucro.forEach((val, idx) => {
+                    const x = getX(idx);
+                    const y = getY(val);
+                    ctx.beginPath();
+                    ctx.fillStyle = val >= 0 ? '#00ff80' : '#ff3b6b';
+                    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (idx % passoLabel === 0 || idx === labels.length - 1) {
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.fillText(labels[idx], x - 14, height - 8);
+                    }
+                });
+            }
+
+            function atualizarPreviewEntrada() {
+                const odd=Number(document.getElementById('entradaOdd').value)||1;
+                const stake=Number(document.getElementById('entradaStake').value)||0;
+                const el=document.getElementById('previewPnlEntrada');el.textContent=formatPnlBRL(stake*(odd-1));el.className='text-sm font-bold mono text-neonGreen';
+            }
+
+            function abrirModal(id) {
+                const el = document.getElementById(id);
+                el.classList.remove('hidden');
+                el.classList.add('flex');
+            }
+
+            function fecharModal(id) {
+                const el = document.getElementById(id);
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+            }
+
+            function escapeHtml(str) {
+                return String(str || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            // Eventos de Período
+            document.querySelectorAll('.periodo-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    periodoAtual = btn.getAttribute('data-periodo');
+                    document.querySelectorAll('.periodo-btn').forEach((b) => {
+                        const ativo = b.getAttribute('data-periodo') === periodoAtual;
+                        b.className = ativo
+                            ? (b.classList.contains('flex-1')
+                                ? 'periodo-btn flex-1 py-1 rounded-md text-xs font-semibold bg-emerald-500/15 text-neonGreen border border-emerald-400/40'
+                                : 'periodo-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-neonGreen border border-emerald-400/40 transition')
+                            : (b.classList.contains('flex-1')
+                                ? 'periodo-btn flex-1 py-1 rounded-md text-xs font-semibold text-slate-400'
+                                : 'periodo-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition');
+                    });
+                    renderizarCards();
+                });
+            });
+
+            // Navegação de Meses do Calendário
+            document.getElementById('btnMesAnterior').addEventListener('click', () => {
+                mesExibido = new Date(mesExibido.getFullYear(), mesExibido.getMonth() - 1, 1);
+                renderizarCalendario();
+            });
+
+            document.getElementById('btnMesProximo').addEventListener('click', () => {
+                mesExibido = new Date(mesExibido.getFullYear(), mesExibido.getMonth() + 1, 1);
+                renderizarCalendario();
+            });
+
+            // Filtros da Tabela
+            document.getElementById('filtroCasa').addEventListener('change', renderizarTabelaEntradas);
+            document.getElementById('filtroResultado').addEventListener('change', renderizarTabelaEntradas);
+
+            // Modais Entrada
+            document.getElementById('btnAbrirEntrada').addEventListener('click', () => {
+                document.getElementById('entradaData').value = dataLocal();
+                document.getElementById('entradaMercado').value = '';
+                document.getElementById('entradaOdd').value = '1.95';
+                document.getElementById('entradaStake').value = '150.00';
+                document.getElementById('entradaEditId').value = '';
+                document.getElementById('tituloEntrada').textContent='Registrar Nova Entrada';
+                atualizarPreviewEntrada();
+                abrirModal('modalEntrada');
+            });
+
+            document.getElementById('fecharModalEntrada').addEventListener('click', () => fecharModal('modalEntrada'));
+            document.getElementById('cancelarModalEntrada').addEventListener('click', () => fecharModal('modalEntrada'));
+
+            ['entradaOdd', 'entradaStake'].forEach((id) => {
+                document.getElementById(id).addEventListener('input', atualizarPreviewEntrada);
+                document.getElementById(id).addEventListener('change', atualizarPreviewEntrada);
+            });
+
+            document.getElementById('formEntrada').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const editId=document.getElementById('entradaEditId').value;
+                const casaEscolhida=document.getElementById('entradaCasa').value;
+                const stakeEscolhida=Number(document.getElementById('entradaStake').value);
+                const anterior=estado.entradas.find(x=>x.id===editId);
+                const creditoAnterior=anterior&&anterior.casaId===casaEscolhida&&anterior.resultado==='PENDENTE'?Number(anterior.stake):0;
+                if(!Number.isFinite(stakeEscolhida)||stakeEscolhida<=0||stakeEscolhida>disponivelCasa(casaEscolhida)+creditoAnterior){alert('Stake inválida ou saldo disponível insuficiente nesta casa.');return;}
+                const nova={id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:anterior?.resultado||'PENDENTE',retornoRecebido:anterior?.retornoRecebido,finalizadaEm:anterior?.finalizadaEm};
+                if(anterior)Object.assign(anterior,nova);else estado.entradas.push(nova);
+                salvarEstado();
+                renderizarTudo();
+                fecharModal('modalEntrada');
+                mostrarFeedback(editId ? "Entrada atualizada." : "Entrada registrada como PENDENTE.");
+            });
+
+            // Modais Casa
+            const abrirCadastroCasa = () => {
+                document.getElementById('casaNome').value = '';
+                document.getElementById('casaConta').value = '';
+                document.getElementById('casaBanca').value = '0.00';
+                document.getElementById('casaEditId').value='';
+                document.getElementById('tituloCasa').textContent='Cadastrar Casa / Conta';
+                abrirModal('modalCasa');
+            };
+
+            document.getElementById('btnAbrirCasa').addEventListener('click', abrirCadastroCasa);
+            document.getElementById('btnNovaCasaSecao').addEventListener('click', abrirCadastroCasa);
+            document.getElementById('fecharModalCasa').addEventListener('click', () => fecharModal('modalCasa'));
+            document.getElementById('cancelarModalCasa').addEventListener('click', () => fecharModal('modalCasa'));
+
+            document.getElementById('formCasa').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const novaCasa = {
+                    id: 'c_' + Date.now(),
+                    nome: document.getElementById('casaNome').value.trim(),
+                    conta: document.getElementById('casaConta').value.trim(),
+                    bancaInicial: parseFloat(document.getElementById('casaBanca').value) || 0
+                };
+                const editId=document.getElementById("casaEditId").value;
+                const anterior=estado.casas.find(c=>c.id===editId);
+                if(anterior){Object.assign(anterior,{nome:novaCasa.nome,conta:novaCasa.conta,bancaInicial:novaCasa.bancaInicial});}else estado.casas.push(novaCasa);
+                salvarEstado();
+                renderizarTudo();
+                fecharModal('modalCasa');
+                mostrarFeedback(`Casa ${novaCasa.nome} (${novaCasa.conta}) adicionada com sucesso.`);
+            });
+
+            // Restaurar Dados Exemplo
+            document.getElementById('btnResetDemo').addEventListener('click', () => {
+                if(!confirm('ATENÇÃO: substituir TODOS os registros por dados fictícios?'))return;
+                estado = {...JSON.parse(JSON.stringify(dadosIniciais)),movimentacoes:[]};
+                salvarEstado();
+                renderizarTudo();
+                mostrarFeedback('Dados de exemplo restaurados.');
+            });
+
+            // Fechar Banner
+            document.getElementById('btnFecharFeedback').addEventListener('click', () => {
+                document.getElementById('feedbackBanner').classList.add('hidden');
+                document.getElementById('feedbackBanner').classList.remove('flex');
+            });
+
+            window.addEventListener('resize', renderizarGrafico);
+
+
+            function saldoCasa(id){const c=estado.casas.find(c=>c.id===id);if(!c)return 0;return Number(c.bancaInicial||0)+estado.entradas.filter(e=>e.casaId===id).reduce((a,e)=>a+calcularPnlEntrada(e),0)+estado.movimentacoes.filter(m=>m.casaId===id).reduce((a,m)=>a+(m.tipo==='DEPOSITO'?m.valor:-m.valor),0);}
+            function disponivelCasa(id){return saldoCasa(id)-estado.entradas.filter(e=>e.casaId===id&&e.resultado==='PENDENTE').reduce((a,e)=>a+Number(e.stake),0);}
+            function renderizarMovimentacoes(){const dep=estado.movimentacoes.filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+m.valor,0),saq=estado.movimentacoes.filter(m=>m.tipo==='SAQUE').reduce((a,m)=>a+m.valor,0),res=estado.entradas.filter(e=>e.resultado==='PENDENTE').reduce((a,e)=>a+Number(e.stake),0);document.getElementById('totalDepositos').textContent=formatBRL(dep);document.getElementById('totalSaques').textContent=formatBRL(saq);document.getElementById('totalReservado').textContent=formatBRL(res);document.getElementById('totalDisponivel').textContent=formatBRL(estado.casas.reduce((a,c)=>a+disponivelCasa(c.id),0));document.getElementById('historicoMov').textContent=estado.movimentacoes.slice(-8).reverse().map(m=>`${m.data} · ${m.tipo} · ${obterCasaPorId(m.casaId).nome} · ${formatBRL(m.valor)}`).join(' | ')||'Nenhuma movimentação registrada.';const select=document.getElementById('movCasa');const prev=select.value;select.replaceChildren();estado.casas.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=`${c.nome} — ${c.conta}`;select.append(opt)});select.value=prev||select.options[0]?.value||'';}
+            document.getElementById('btnMovimentacao').onclick=()=>{document.getElementById('movData').value=dataLocal();abrirModal('modalMov')};
+            document.getElementById('fecharMov').onclick=()=>fecharModal('modalMov');
+            document.getElementById('formMov').onsubmit=e=>{e.preventDefault();const tipo=document.getElementById('movTipo').value,casaId=document.getElementById('movCasa').value,valor=Number(document.getElementById('movValor').value);if(!Number.isFinite(valor)||valor<=0)return;if(tipo==='SAQUE'&&valor>disponivelCasa(casaId)){alert('Saldo disponível insuficiente para saque.');return;}estado.movimentacoes.push({id:'m_'+Date.now(),tipo,casaId,valor,data:document.getElementById('movData').value,obs:document.getElementById('movObs').value});salvarEstado();renderizarTudo();fecharModal('modalMov');e.target.reset();mostrarFeedback('Movimentação registrada.');};
+            document.getElementById('btnExportar').onclick=()=>{const b=new Blob([JSON.stringify({exportadoEm:new Date().toISOString(),...estado},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='arbitbet-backup-'+dataLocal()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
+            // Bloqueio local do navegador; NÃO substitui autenticação de servidor.
+            async function hashSenha(s){const data=new TextEncoder().encode(s);const hash=await crypto.subtle.digest('SHA-256',data);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+            const login=document.getElementById('loginOverlay');
+            document.getElementById('loginAjuda').textContent=localStorage.getItem('arbitbet_local_hash')?'Informe a senha local para abrir o terminal.':'Defina uma senha local (mínimo 8 caracteres).';
+            document.getElementById('formLogin').onsubmit=async e=>{e.preventDefault();try{const h=await hashSenha(document.getElementById('loginSenha').value);const saved=localStorage.getItem('arbitbet_local_hash');if(saved&&saved!==h){document.getElementById('loginErro').textContent='Senha incorreta.';return;}if(!saved)localStorage.setItem('arbitbet_local_hash',h);login.style.display='none';sessionStorage.setItem('arbitbet_unlocked','1');}catch(err){document.getElementById('loginErro').textContent='Abra por HTTPS ou localhost para usar o bloqueio.';}};
+            if(sessionStorage.getItem('arbitbet_unlocked')==='1')login.style.display='none';
+            document.getElementById('btnSair').onclick=()=>{sessionStorage.removeItem('arbitbet_unlocked');login.style.display='flex';document.getElementById('loginSenha').value='';};
+            let deferredInstall;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;document.getElementById('btnInstalar').style.display='inline-block'});document.getElementById('btnInstalar').onclick=async()=>{if(!deferredInstall)return;deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;document.getElementById('btnInstalar').style.display='none';};
+            if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(console.warn);
+
+
+            const drawer=document.getElementById('drawer'),backdrop=document.getElementById('drawerBackdrop');
+            function toggleDrawer(open){drawer.classList.toggle('-translate-x-full',!open);backdrop.classList.toggle('hidden',!open)}
+            document.getElementById('openDrawer').onclick=()=>toggleDrawer(true);document.getElementById('closeDrawer').onclick=()=>toggleDrawer(false);backdrop.onclick=()=>toggleDrawer(false);document.querySelectorAll('.drawer-link').forEach(a=>a.onclick=()=>toggleDrawer(false));
+            function atualizarLiquidacao(){const r=document.getElementById('liquidarResultado').value;const e=estado.entradas.find(x=>x.id===document.getElementById('liquidarId').value);if(!e)return;document.getElementById('liquidarRetornoWrap').classList.toggle('hidden',r!=='CASHOUT');const pnl=r==='GREEN'?e.stake*(e.odd-1):r==='RED'?-e.stake:r==='CASHOUT'?Number(document.getElementById('liquidarRetorno').value||0)-e.stake:0;document.getElementById('liquidarPreview').textContent='Resultado líquido: '+formatPnlBRL(pnl);}
+            document.getElementById('liquidarResultado').onchange=atualizarLiquidacao;document.getElementById('liquidarRetorno').oninput=atualizarLiquidacao;
+            document.getElementById('fecharLiquidar').onclick=()=>fecharModal('modalLiquidar');
+            document.getElementById('formLiquidar').onsubmit=ev=>{ev.preventDefault();const e=estado.entradas.find(x=>x.id===document.getElementById('liquidarId').value);if(!e||e.resultado!=='PENDENTE')return;const r=document.getElementById('liquidarResultado').value;const valor=Number(document.getElementById('liquidarRetorno').value);if(r==='CASHOUT'&&(!document.getElementById('liquidarRetorno').value||!Number.isFinite(valor)||valor<0)){alert('Informe o valor recebido no cashout.');return;}e.resultado=r;e.retornoRecebido=r==='CASHOUT'?valor:undefined;e.finalizadaEm=dataLocal();salvarEstado();renderizarTudo();fecharModal('modalLiquidar');mostrarFeedback('Resultado registrado e indicadores atualizados.');};
+            renderizarTudo();
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+ARBITBET V2 — TESTES NA VERCEL
+
+1. Crie um repositório GitHub PRIVADO exclusivo para Arbitbet.
+2. Envie index.html, manifest.webmanifest, sw.js, vercel.json e a pasta icons para a RAIZ do repositório.
+3. Na Vercel: Add New > Project > Import Git Repository; selecione o repositório.
+4. Framework Preset: Other. Root Directory: ./ . Build Command: deixe em branco. Output Directory: deixe em branco. Deploy.
+5. Antes de inserir dados reais, ative proteção de acesso no projeto Vercel, se disponível no seu plano. O bloqueio de senha do HTML NÃO protege os dados contra acesso técnico.
+6. No endereço HTTPS do deployment, verifique instalação PWA, cadastro de casa, depósito, saque, pendência, GREEN, RED, reembolso, cashout, edição, gráfico e calendário.
+7. Os dados ficam no localStorage do navegador. Não sincronizam PC/celular. Use apenas valores fictícios nesta etapa.
+8. Para uso pessoal real, próximo passo obrigatório: autenticação Supabase + RLS + banco remoto + migração de dados.
+
+NÃO use o repositório ou o Supabase da Pastelaria do Nasci.
