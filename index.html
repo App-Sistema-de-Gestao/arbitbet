@@ -91,6 +91,13 @@
             box-shadow: 0 0 12px rgba(59, 130, 246, 0.20);
         }
 
+        .status-pending {
+            background: rgba(245, 158, 11, 0.17);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.65);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.18);
+        }
+
         .status-red {
             background: rgba(255, 59, 107, 0.15);
             color: #ff5c85;
@@ -822,7 +829,7 @@
                         <td class="py-3 px-4 text-right text-slate-200">${Number(item.odd).toFixed(2)}</td>
                         <td class="py-3 px-4 text-right text-slate-200">${formatBRL(item.stake)}</td>
                         <td class="py-3 px-4 text-center">
-                            <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide ${item.resultado === 'CASHOUT' ? 'status-cashout' : isGreen ? 'status-green' : 'status-red'}">
+                            <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide ${isPending ? 'status-pending' : item.resultado === 'CASHOUT' ? 'status-cashout' : isGreen ? 'status-green' : 'status-red'}">
                                 ${escapeHtml(item.resultado)}
                             </span>
                         </td>
