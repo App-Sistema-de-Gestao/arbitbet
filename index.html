@@ -413,7 +413,7 @@
     </div>
 
     <div id="loginOverlay" class="fixed inset-0 z-[90] bg-voidbg flex items-center justify-center p-5"><form id="formLogin" class="neon-card rounded-2xl p-6 w-full max-w-sm space-y-4"><h2 class="text-2xl font-bold text-neonGreen">Arbitbet</h2><p id="loginAjuda" class="text-sm text-slate-300">Crie uma senha para bloquear o acesso neste navegador.</p><input id="loginSenha" type="password" minlength="8" required autocomplete="current-password" placeholder="Senha (mínimo 8 caracteres)" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-3 text-white"><button class="neon-btn w-full py-3 rounded-xl">Entrar / Configurar</button><p id="loginErro" class="text-xs text-neonRed"></p><p class="text-xs text-slate-400">Bloqueio local, não é autenticação de servidor. Para uso em múltiplos aparelhos, configure backend com login real.</p></form></div>
-<div id="modalMov" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><form id="formMov" class="neon-card rounded-2xl p-5 w-full max-w-md space-y-3"><h3 class="text-white font-bold">Registrar depósito ou saque</h3><label class="block text-xs">Movimentação<select id="movTipo" class="w-full bg-voidbg p-3 rounded-lg"><option value="DEPOSITO">Depósito</option><option value="SAQUE">Saque</option></select></label><label class="block text-xs">Casa / Conta<select id="movCasa" required class="w-full bg-voidbg p-3 rounded-lg"></select></label><label class="block text-xs">Valor (R$)<input id="movValor" type="number" step="0.01" min="0.01" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Data<input id="movData" type="date" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Observação<input id="movObs" maxlength="160" class="w-full bg-voidbg p-3 rounded-lg"></label><div class="flex gap-2"><button type="button" id="fecharMov" class="bg-slate-700 rounded-lg p-3 flex-1">Cancelar</button><button class="neon-btn rounded-lg p-3 flex-1">Salvar</button></div></form></div>
+<div id="modalMov" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><form id="formMov" class="neon-card rounded-2xl p-5 w-full max-w-md space-y-3"><h3 class="text-white font-bold">Registrar depósito ou saque</h3><label class="block text-xs">Movimentação<select id="movTipo" class="w-full bg-voidbg p-3 rounded-lg"><option value="DEPOSITO">Depósito</option><option value="SAQUE">Saque</option><option value="RODADAS_GRATIS">Rodadas Grátis</option></select></label><label class="block text-xs">Casa / Conta<select id="movCasa" required class="w-full bg-voidbg p-3 rounded-lg"></select></label><label class="block text-xs">Valor (R$)<input id="movValor" type="number" step="0.01" min="0.01" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Data<input id="movData" type="date" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Observação<input id="movObs" maxlength="160" class="w-full bg-voidbg p-3 rounded-lg"></label><div class="flex gap-2"><button type="button" id="fecharMov" class="bg-slate-700 rounded-lg p-3 flex-1">Cancelar</button><button class="neon-btn rounded-lg p-3 flex-1">Salvar</button></div></form></div>
 <!-- Modal: Nova Entrada -->
     <div id="modalEntrada" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="neon-card rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4">
@@ -528,13 +528,14 @@
                     { id:'nbr', nome:'Br365', conta:'Neudson', bancaInicial:0 },
                     { id:'npt', nome:'Partiu Bet', conta:'Neudson', bancaInicial:0 },
                     { id:'ept', nome:'Partiu Bet', conta:'Edilene', bancaInicial:0 },
-                    { id:'ebr', nome:'Br365', conta:'Edilene — bilhetes atribuídos em confirmação posterior', bancaInicial:0 }
+                    { id:'ebr', nome:'Br365', conta:'Edilene', bancaInicial:0 }
                 ],
                 entradas: [
                     {id:'n99-1',data:'2026-11-17',casaId:'n99',mercado:'Múltipla — odd 8,79',odd:8.79,stake:10,resultado:'RED'},
                     {id:'n99-2',data:'2026-11-18',casaId:'n99',mercado:'LA Lakers x Charlotte Hornets',odd:2.545,stake:10,resultado:'GREEN',retornoRecebido:25.45},
                     {id:'npt-1',data:'2026-11-16',casaId:'npt',mercado:'Múltipla NBA (4 seleções)',odd:336.12,stake:5,resultado:'RED'},
-                    {id:'npt-2',data:'2026-11-16',casaId:'npt',mercado:'Múltipla futebol (8 seleções)',odd:58.4,stake:5,resultado:'RED'},
+                    {id:'npt-2',data:'2026-11-16',casaId:'npt',mercado:'Múltipla — Futebol (8 jogos)',odd:58.4,stake:5,resultado:'RED'},
+                    {id:'npt-3',data:'2026-11-16',casaId:'npt',mercado:'Múltipla — Futebol (10 jogos)',odd:7.909,stake:10,resultado:'PENDENTE',retornoPotencial:79.09},
                     {id:'ebr-1',data:'2026-11-08',casaId:'ebr',mercado:'Simples — odd 10,00',odd:10,stake:1,resultado:'GREEN'},
                     {id:'ebr-2',data:'2026-11-08',casaId:'ebr',mercado:'Simples — odd 9,50',odd:9.5,stake:2,resultado:'RED'},
                     {id:'ebr-3',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,00',odd:4,stake:10,resultado:'RED'},
@@ -549,7 +550,11 @@
                     {id:'dep-nbr-3',tipo:'DEPOSITO',casaId:'nbr',valor:10,data:'2026-11-17',obs:'Comprovante'},
                     {id:'dep-n99-1',tipo:'DEPOSITO',casaId:'n99',valor:20,data:'2026-11-17',obs:'Comprovante'},
                     {id:'dep-npt-1',tipo:'DEPOSITO',casaId:'npt',valor:20,data:'2026-11-16',obs:'Comprovante'},
-                    {id:'dep-ept-1',tipo:'DEPOSITO',casaId:'ept',valor:25,data:'2026-11-18',obs:'Depósito único informado; data exata a confirmar'}
+                    {id:'dep-ept-1',tipo:'DEPOSITO',casaId:'ept',valor:25,data:'2026-11-18',obs:'Depósito único informado; data exata a confirmar'},
+                    {id:'dep-ebr-1511',tipo:'DEPOSITO',casaId:'ebr',valor:15,data:'2026-11-08',obs:'Depósito único confirmado às 15:39'},
+                    {id:'rg-ebr-016',tipo:'RODADAS_GRATIS',casaId:'ebr',valor:0.16,data:'2026-11-08',obs:'Golden Dragon — rodadas grátis'},
+                    {id:'rg-npt-273',tipo:'RODADAS_GRATIS',casaId:'npt',valor:2.73,data:'2026-11-19',obs:'Sweet Bonanza — 15 ganhos visíveis'},
+                    {id:'rg-npt-047',tipo:'RODADAS_GRATIS',casaId:'npt',valor:0.47,data:'2026-11-19',obs:'Ajuste de conciliação; ganho individual não comprovado'}
                 ]
             };
 
@@ -560,6 +565,23 @@
                 estado.entradas.push({id:'99play-5674230586',data:'2026-11-19',casaId:'n99',mercado:'Múltipla (2) — Manchester City x Fulham / Bayern Munich x Cologne — bilhete 5674230586; bônus potencial R$ 0,08',odd:3.81,stake:1.45,resultado:'PENDENTE'});
                 try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (err) { console.warn('Não foi possível persistir a entrada:', err); }
             }
+            // Conciliação incremental: preserva registros do usuário e evita duplicar lançamentos.
+            const registrosConfirmados = [
+                {id:'npt-3',data:'2026-11-16',casaId:'npt',mercado:'Múltipla — Futebol (10 jogos)',odd:7.909,stake:10,resultado:'PENDENTE',retornoPotencial:79.09}
+            ];
+            for (const entrada of registrosConfirmados) {
+                if (!estado.entradas.some(e=>e.id===entrada.id)) estado.entradas.push(entrada);
+            }
+            const movimentosConfirmados = [
+                {id:'dep-ebr-1511',tipo:'DEPOSITO',casaId:'ebr',valor:15,data:'2026-11-08',obs:'Depósito único confirmado às 15:39'},
+                {id:'rg-ebr-016',tipo:'RODADAS_GRATIS',casaId:'ebr',valor:0.16,data:'2026-11-08',obs:'Golden Dragon — rodadas grátis'},
+                {id:'rg-npt-273',tipo:'RODADAS_GRATIS',casaId:'npt',valor:2.73,data:'2026-11-19',obs:'Sweet Bonanza — 15 ganhos visíveis'},
+                {id:'rg-npt-047',tipo:'RODADAS_GRATIS',casaId:'npt',valor:0.47,data:'2026-11-19',obs:'Ajuste de conciliação; ganho individual não comprovado'}
+            ];
+            for (const mov of movimentosConfirmados) {
+                if (!estado.movimentacoes.some(m=>m.id===mov.id)) estado.movimentacoes.push(mov);
+            }
+            salvarEstado();
             let periodoAtual = 'mensal';
             let mesExibido = new Date(2026, 10, 1); // Novembro 2026
 
@@ -664,7 +686,7 @@
                 const entradasPeriodo = filtrarEntradasPorPeriodo(estado.entradas);
                 const bancaBase = estado.casas.reduce((acc, c) => acc + (Number(c.bancaInicial) || 0), 0);
                 const pnlTotalHistorico = estado.entradas.reduce((acc, e) => acc + calcularPnlEntrada(e), 0);
-                const patrimonioTotal = bancaBase + pnlTotalHistorico + estado.movimentacoes.reduce((a,m)=>a+(m.tipo==='DEPOSITO'?m.valor:-m.valor),0);
+                const patrimonioTotal = bancaBase + pnlTotalHistorico + estado.movimentacoes.reduce((a,m)=>a+(m.tipo==='SAQUE'?-Number(m.valor):Number(m.valor)),0);
 
                 const pnlPeriodo = entradasPeriodo.reduce((acc, e) => acc + calcularPnlEntrada(e), 0);
                 const stakePeriodo = entradasPeriodo.filter(e=>!['PENDENTE','ANULADA','REEMBOLSO'].includes(e.resultado)).reduce((acc, e) => acc + (Number(e.stake) || 0), 0);
@@ -1219,7 +1241,7 @@
             window.addEventListener('resize', renderizarGrafico);
 
 
-            function saldoCasa(id){const c=estado.casas.find(c=>c.id===id);if(!c)return 0;return Number(c.bancaInicial||0)+estado.entradas.filter(e=>e.casaId===id).reduce((a,e)=>a+calcularPnlEntrada(e),0)+estado.movimentacoes.filter(m=>m.casaId===id).reduce((a,m)=>a+(m.tipo==='DEPOSITO'?m.valor:-m.valor),0);}
+            function saldoCasa(id){const c=estado.casas.find(c=>c.id===id);if(!c)return 0;return Number(c.bancaInicial||0)+estado.entradas.filter(e=>e.casaId===id).reduce((a,e)=>a+calcularPnlEntrada(e),0)+estado.movimentacoes.filter(m=>m.casaId===id).reduce((a,m)=>a+(m.tipo==='SAQUE'?-Number(m.valor):Number(m.valor)),0);}
             function disponivelCasa(id){return saldoCasa(id)-estado.entradas.filter(e=>e.casaId===id&&e.resultado==='PENDENTE').reduce((a,e)=>a+Number(e.stake),0);}
             function renderizarMovimentacoes(){const dep=estado.movimentacoes.filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+m.valor,0),saq=estado.movimentacoes.filter(m=>m.tipo==='SAQUE').reduce((a,m)=>a+m.valor,0),res=estado.entradas.filter(e=>e.resultado==='PENDENTE').reduce((a,e)=>a+Number(e.stake),0);document.getElementById('totalDepositos').textContent=formatBRL(dep);document.getElementById('totalSaques').textContent=formatBRL(saq);document.getElementById('totalReservado').textContent=formatBRL(res);document.getElementById('totalDisponivel').textContent=formatBRL(estado.casas.reduce((a,c)=>a+disponivelCasa(c.id),0));document.getElementById('historicoMov').textContent=estado.movimentacoes.slice(-8).reverse().map(m=>`${m.data} · ${m.tipo} · ${obterCasaPorId(m.casaId).nome} · ${formatBRL(m.valor)}`).join(' | ')||'Nenhuma movimentação registrada.';const select=document.getElementById('movCasa');const prev=select.value;select.replaceChildren();estado.casas.forEach(c=>{const opt=document.createElement('option');opt.value=c.id;opt.textContent=`${c.nome} — ${c.conta}`;select.append(opt)});select.value=prev||select.options[0]?.value||'';}
             document.getElementById('btnMovimentacao').onclick=()=>{document.getElementById('movData').value=dataLocal();abrirModal('modalMov')};
