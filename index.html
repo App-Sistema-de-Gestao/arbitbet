@@ -453,9 +453,10 @@
                         <label class="block text-xs text-slate-400 mb-1">Stake (R$)</label>
                         <input id="entradaStake" type="number" step="0.01" min="0.01" value="150.00" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm mono text-white focus:outline-none focus:border-neonGreen" />
                     </div>
-                    <div class="flex items-end"><span class="rounded-xl border border-amber-500/40 text-amber-300 text-xs p-3 w-full text-center">● PENDENTE</span></div>
+                    <div><label class="block text-xs text-slate-400 mb-1">Resultado</label><select id="entradaResultado" class="w-full bg-voidbg border border-darkborder rounded-xl px-2 py-2 text-sm text-white"><option value="PENDENTE">PENDENTE</option><option value="GREEN">GREEN</option><option value="RED">RED</option><option value="CASHOUT">CASHOUT</option><option value="REEMBOLSO">REEMBOLSO</option></select></div>
                 </div>
 
+                <div id="entradaRetornoWrap" class="hidden"><label class="block text-xs text-slate-400 mb-1">Valor total recebido (R$) — GREEN / CASHOUT</label><input id="entradaRetorno" type="number" min="0" step="0.01" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm mono text-white" placeholder="Ex.: 38.75" /></div>
                 <div class="bg-voidbg border border-darkborder rounded-xl p-3 flex items-center justify-between">
                     <span class="text-xs text-slate-400">Lucro potencial se GREEN:</span>
                     <span id="previewPnlEntrada" class="text-sm font-bold mono text-neonGreen">+R$ 142,50</span>
@@ -885,7 +886,7 @@
                 });
 
                 document.querySelectorAll('.btn-finalizar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.final);if(!e)return;document.getElementById('liquidarId').value=e.id;document.getElementById('liquidarDescricao').textContent=e.mercado+' — '+obterCasaPorId(e.casaId).nome+' — Stake '+formatBRL(e.stake);document.getElementById('liquidarResultado').value='GREEN';document.getElementById('liquidarRetorno').value='';atualizarLiquidacao();abrirModal('modalLiquidar');}));
-                document.querySelectorAll('.btn-editar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.edit);if(!e)return;document.getElementById('entradaEditId').value=e.id;document.getElementById('entradaData').value=e.data;document.getElementById('entradaCasa').value=e.casaId;document.getElementById('entradaMercado').value=e.mercado;document.getElementById('entradaOdd').value=e.odd;document.getElementById('entradaStake').value=e.stake;document.getElementById('tituloEntrada').textContent='Editar Entrada';atualizarPreviewEntrada();abrirModal('modalEntrada');}));
+                document.querySelectorAll('.btn-editar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.edit);if(!e)return;document.getElementById('entradaEditId').value=e.id;document.getElementById('entradaData').value=e.data;document.getElementById('entradaCasa').value=e.casaId;document.getElementById('entradaMercado').value=e.mercado;document.getElementById('entradaOdd').value=e.odd;document.getElementById('entradaStake').value=e.stake;document.getElementById('entradaResultado').value=e.resultado;document.getElementById('entradaRetorno').value=e.retornoRecebido??'';atualizarCamposResultadoEntrada();document.getElementById('tituloEntrada').textContent='Editar Entrada';atualizarPreviewEntrada();abrirModal('modalEntrada');}));
                 document.querySelectorAll('.btn-excluir-entrada').forEach((btn) => {
                     btn.addEventListener('click', () => {
                         const id = btn.getAttribute('data-del');
@@ -1112,6 +1113,13 @@
                 });
             }
 
+            function atualizarCamposResultadoEntrada() {
+                const resultado=document.getElementById('entradaResultado').value;
+                const exibir=['GREEN','CASHOUT'].includes(resultado);
+                document.getElementById('entradaRetornoWrap').classList.toggle('hidden',!exibir);
+                document.getElementById('entradaRetorno').required=exibir;
+            }
+            document.getElementById('entradaResultado').addEventListener('change',atualizarCamposResultadoEntrada);
             function atualizarPreviewEntrada() {
                 const odd=Number(document.getElementById('entradaOdd').value)||1;
                 const stake=Number(document.getElementById('entradaStake').value)||0;
@@ -1197,12 +1205,16 @@
                 const editId=document.getElementById('entradaEditId').value;
                 const casaEscolhida=document.getElementById('entradaCasa').value;
                 const stakeEscolhida=Number(document.getElementById('entradaStake').value);
+                const resultadoEscolhido=document.getElementById('entradaResultado').value;
+                const retornoCampo=document.getElementById('entradaRetorno').value;
+                const retornoEscolhido=['GREEN','CASHOUT'].includes(resultadoEscolhido)?Number(retornoCampo):undefined;
+                if(['GREEN','CASHOUT'].includes(resultadoEscolhido) && (retornoCampo==='' || !Number.isFinite(retornoEscolhido) || retornoEscolhido<0)){alert('Informe o valor total recebido.');return;}
                 const anterior=estado.entradas.find(x=>x.id===editId);
                 const creditoAnterior=anterior&&anterior.casaId===casaEscolhida&&anterior.resultado==='PENDENTE'?Number(anterior.stake):0;
-                const precisaReservarSaldo=!anterior || (anterior.resultado==='PENDENTE' && (anterior.casaId!==casaEscolhida || stakeEscolhida>Number(anterior.stake)));
+                const precisaReservarSaldo=resultadoEscolhido==='PENDENTE' && (!anterior || anterior.resultado!=='PENDENTE' || anterior.casaId!==casaEscolhida || stakeEscolhida>Number(anterior.stake));
                 if(!Number.isFinite(stakeEscolhida)||stakeEscolhida<=0){alert('Informe um valor apostado válido.');return;}
                 if(precisaReservarSaldo && stakeEscolhida>disponivelCasa(casaEscolhida)+creditoAnterior){alert('Saldo disponível insuficiente nesta casa.');return;}
-                const nova={id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:anterior?.resultado||'PENDENTE',retornoRecebido:anterior?.retornoRecebido,finalizadaEm:anterior?.finalizadaEm};
+                const nova={id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:resultadoEscolhido,retornoRecebido:retornoEscolhido,finalizadaEm:resultadoEscolhido==='PENDENTE'?undefined:(anterior?.finalizadaEm||new Date().toISOString())};
                 if(anterior)Object.assign(anterior,nova);else estado.entradas.push(nova);
                 salvarEstado();
                 renderizarTudo();
