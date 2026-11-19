@@ -503,23 +503,38 @@
 <div id="modalLiquidar" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><div class="neon-card rounded-2xl w-full max-w-md p-5 space-y-4"><div class="flex justify-between"><h3 class="font-bold text-white">Finalizar entrada</h3><button id="fecharLiquidar" class="text-white">✕</button></div><p id="liquidarDescricao" class="text-xs text-slate-300"></p><form id="formLiquidar" class="space-y-4"><input type="hidden" id="liquidarId"><label class="block text-xs text-slate-300">Situação<select id="liquidarResultado" class="w-full mt-1 bg-voidbg text-white border border-darkborder rounded-xl p-3"><option value="GREEN">GREEN</option><option value="RED">RED</option><option value="REEMBOLSO">REEMBOLSO (stake devolvida)</option><option value="CASHOUT">CASHOUT</option></select></label><label id="liquidarRetornoWrap" class="hidden text-xs text-slate-300">Valor recebido no cashout (R$)<input type="number" min="0" step="0.01" id="liquidarRetorno" class="w-full mt-1 bg-voidbg text-white border border-darkborder rounded-xl p-3"></label><p id="liquidarPreview" class="mono text-neonGreen text-sm"></p><button type="submit" class="neon-btn rounded-xl px-4 py-3 w-full">Confirmar resultado</button></form></div></div>
     <script>
         (function () {
-            const STORAGE_KEY = 'arbitbet_terminal_v2';
-            const OLD_KEY = 'arbitbet_terminal_v1';
+            const STORAGE_KEY = 'arbitbet_terminal_v3_conferencia';
+            const OLD_KEY = 'arbitbet_terminal_v3_conferencia';
 
+            // Base documental inicial: apenas valores identificados nos comprovantes.
+            // Contas com dados incompletos continuam editáveis; não estimar saldos não comprovados.
             const dadosIniciais = {
                 casas: [
-                    { id: 'c1', nome: '99play', conta: 'Conta Principal', bancaInicial: 2500.00 },
-                    { id: 'c2', nome: 'Br365', conta: 'Conta Operação 02', bancaInicial: 3200.00 },
-                    { id: 'c3', nome: 'Partiubet', conta: 'Conta Parceiro 03', bancaInicial: 1800.00 }
+                    { id:'n99', nome:'99play', conta:'Neudson', bancaInicial:0 },
+                    { id:'nbr', nome:'Br365', conta:'Neudson', bancaInicial:0 },
+                    { id:'npt', nome:'Partiu Bet', conta:'Neudson', bancaInicial:0 },
+                    { id:'ept', nome:'Partiu Bet', conta:'Edilene', bancaInicial:0 },
+                    { id:'ebr', nome:'Br365', conta:'Edilene — bilhetes atribuídos em confirmação posterior', bancaInicial:0 }
                 ],
                 entradas: [
-                    { id: 'e1', data: '2026-11-18', casaId: 'c2', mercado: 'Arbitragem Futebol — Over 2.5', odd: 2.10, stake: 300.00, resultado: 'GREEN' },
-                    { id: 'e2', data: '2026-11-18', casaId: 'c1', mercado: 'Entrada Avulsa Basquete — Handicap', odd: 1.90, stake: 150.00, resultado: 'GREEN' },
-                    { id: 'e3', data: '2026-11-16', casaId: 'c3', mercado: 'Arbitragem Tênis — Set 1', odd: 1.85, stake: 200.00, resultado: 'RED' },
-                    { id: 'e4', data: '2026-11-14', casaId: 'c2', mercado: 'Entrada Avulsa Futebol — Ambas Marcam', odd: 2.25, stake: 250.00, resultado: 'GREEN' },
-                    { id: 'e5', data: '2026-11-11', casaId: 'c1', mercado: 'Arbitragem Escanteios — Live', odd: 2.05, stake: 220.00, resultado: 'GREEN' },
-                    { id: 'e6', data: '2026-11-07', casaId: 'c3', mercado: 'Entrada Avulsa Futebol — Under 3.5', odd: 1.75, stake: 180.00, resultado: 'RED' },
-                    { id: 'e7', data: '2026-11-04', casaId: 'c2', mercado: 'Arbitragem Dupla Chance', odd: 1.92, stake: 400.00, resultado: 'GREEN' }
+                    {id:'n99-1',data:'2026-11-17',casaId:'n99',mercado:'Múltipla — odd 8,79',odd:8.79,stake:10,resultado:'RED'},
+                    {id:'n99-2',data:'2026-11-18',casaId:'n99',mercado:'LA Lakers x Charlotte Hornets',odd:2.545,stake:10,resultado:'GREEN',retornoRecebido:25.45},
+                    {id:'npt-1',data:'2026-11-16',casaId:'npt',mercado:'Múltipla NBA (4 seleções)',odd:336.12,stake:5,resultado:'RED'},
+                    {id:'npt-2',data:'2026-11-16',casaId:'npt',mercado:'Múltipla futebol (8 seleções)',odd:58.4,stake:5,resultado:'RED'},
+                    {id:'ebr-1',data:'2026-11-08',casaId:'ebr',mercado:'Simples — odd 10,00',odd:10,stake:1,resultado:'GREEN'},
+                    {id:'ebr-2',data:'2026-11-08',casaId:'ebr',mercado:'Simples — odd 9,50',odd:9.5,stake:2,resultado:'RED'},
+                    {id:'ebr-3',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,00',odd:4,stake:10,resultado:'RED'},
+                    {id:'ebr-4',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,89',odd:4.89,stake:3,resultado:'CASHOUT',retornoRecebido:6.23},
+                    {id:'ebr-5',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 27,30',odd:27.3,stake:2,resultado:'RED'},
+                    {id:'ebr-6',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,67',odd:4.67,stake:7,resultado:'CASHOUT',retornoRecebido:16.87}
+                ],
+                movimentacoes: [
+                    {id:'dep-nbr-1',tipo:'DEPOSITO',casaId:'nbr',valor:10,data:'2026-11-08',obs:'Comprovante'},
+                    {id:'dep-nbr-2',tipo:'DEPOSITO',casaId:'nbr',valor:25,data:'2026-11-16',obs:'Comprovante'},
+                    {id:'dep-nbr-3',tipo:'DEPOSITO',casaId:'nbr',valor:10,data:'2026-11-17',obs:'Comprovante'},
+                    {id:'dep-n99-1',tipo:'DEPOSITO',casaId:'n99',valor:20,data:'2026-11-17',obs:'Comprovante'},
+                    {id:'dep-npt-1',tipo:'DEPOSITO',casaId:'npt',valor:20,data:'2026-11-16',obs:'Comprovante'},
+                    {id:'dep-ept-1',tipo:'DEPOSITO',casaId:'ept',valor:25,data:'2026-11-18',obs:'Depósito único informado; data exata a confirmar'}
                 ]
             };
 
@@ -571,6 +586,7 @@
                 if (['PENDENTE','ANULADA','REEMBOLSO'].includes(entrada.resultado)) return 0;
                 if (entrada.resultado === 'CASHOUT') return Number((Number(entrada.retornoRecebido||0)-stake).toFixed(2));
                 if (entrada.resultado === 'GREEN') {
+                    if (Number.isFinite(Number(entrada.retornoRecebido))) return Number((Number(entrada.retornoRecebido)-stake).toFixed(2));
                     return Number((stake * (odd - 1)).toFixed(2));
                 }
                 return Number((-stake).toFixed(2));
