@@ -527,7 +527,7 @@
                     { id:'n99', nome:'99play', conta:'Neudson', bancaInicial:0 },
                     { id:'nbr', nome:'Br365', conta:'Neudson', bancaInicial:0 },
                     { id:'npt', nome:'Partiu Bet', conta:'Neudson', bancaInicial:0 },
-                    { id:'ept', nome:'Partiu Bet', conta:'Edilene', bancaInicial:0 },
+                    
                     { id:'ebr', nome:'Br365', conta:'Edilene', bancaInicial:0 }
                 ],
                 entradas: [
@@ -550,7 +550,6 @@
                     {id:'dep-nbr-3',tipo:'DEPOSITO',casaId:'nbr',valor:10,data:'2026-11-17',obs:'Comprovante'},
                     {id:'dep-n99-1',tipo:'DEPOSITO',casaId:'n99',valor:20,data:'2026-11-17',obs:'Comprovante'},
                     {id:'dep-npt-1',tipo:'DEPOSITO',casaId:'npt',valor:20,data:'2026-11-16',obs:'Comprovante'},
-                    {id:'dep-ept-1',tipo:'DEPOSITO',casaId:'ept',valor:25,data:'2026-11-18',obs:'Depósito único informado; data exata a confirmar'},
                     {id:'dep-ebr-1511',tipo:'DEPOSITO',casaId:'ebr',valor:15,data:'2026-11-08',obs:'Depósito único confirmado às 15:39'},
                     {id:'rg-ebr-016',tipo:'RODADAS_GRATIS',casaId:'ebr',valor:0.16,data:'2026-11-08',obs:'Golden Dragon — rodadas grátis'},
                     {id:'rg-npt-273',tipo:'RODADAS_GRATIS',casaId:'npt',valor:2.73,data:'2026-11-19',obs:'Sweet Bonanza — 15 ganhos visíveis'},
@@ -567,12 +566,25 @@
             }
             // Conciliação incremental: preserva registros do usuário e evita duplicar lançamentos.
             const registrosConfirmados = [
+                {id:'nbr-5672688958',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 24 jogos',odd:9.8,stake:18.75,resultado:'PENDENTE',retornoPotencial:190.31},
+                {id:'nbr-5668666010',data:'2026-11-19',casaId:'nbr',mercado:'Dupla — seleção anulada',odd:85.25,stake:5,resultado:'CASHOUT',retornoRecebido:38.75},
+                {id:'nbr-5669107806',data:'2026-11-17',casaId:'nbr',mercado:'Múltipla — 30 seleções',odd:11.91,stake:5,resultado:'RED'},
+                {id:'nbr-5662121076',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — Futebol',odd:4.34,stake:25,resultado:'RED'},
+                {id:'nbr-5661257610',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla',odd:36,stake:5,resultado:'RED'},
+                {id:'nbr-5657146196',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 10 seleções',odd:3348.63,stake:1,resultado:'RED'},
+                {id:'nbr-5656465878',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 5 seleções',odd:67.2,stake:2,resultado:'RED'},
+                {id:'nbr-5635480533',data:'2026-11-08',casaId:'nbr',mercado:'Simples — Futebol',odd:10,stake:1,resultado:'GREEN',retornoRecebido:10},
+                {id:'nbr-red-extra-4',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 4 seleções (conferir ID)',odd:1,stake:2,resultado:'RED'},
+                {id:'nbr-red-extra-dupla',data:'2026-11-19',casaId:'nbr',mercado:'Dupla (conferir ID)',odd:1,stake:4,resultado:'RED'},
+                {id:'nbr-red-extra-tripla',data:'2026-11-19',casaId:'nbr',mercado:'Tripla (conferir ID)',odd:1,stake:2.5,resultado:'RED'},
+                {id:'nbr-red-extra-5',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 5 seleções (conferir ID)',odd:1,stake:4,resultado:'RED'},
                 {id:'npt-3',data:'2026-11-16',casaId:'npt',mercado:'Múltipla — Futebol (10 jogos)',odd:7.909,stake:10,resultado:'PENDENTE',retornoPotencial:79.09}
             ];
             for (const entrada of registrosConfirmados) {
                 if (!estado.entradas.some(e=>e.id===entrada.id)) estado.entradas.push(entrada);
             }
             const movimentosConfirmados = [
+                {id:'rg-nbr-ajuste-150',tipo:'RODADAS_GRATIS',casaId:'nbr',valor:1.50,data:'2026-11-19',obs:'Ajuste de conciliação para saldo disponível R$ 20,00; não comprovado como prêmio'},
                 {id:'dep-ebr-1511',tipo:'DEPOSITO',casaId:'ebr',valor:15,data:'2026-11-08',obs:'Depósito único confirmado às 15:39'},
                 {id:'rg-ebr-016',tipo:'RODADAS_GRATIS',casaId:'ebr',valor:0.16,data:'2026-11-08',obs:'Golden Dragon — rodadas grátis'},
                 {id:'rg-npt-273',tipo:'RODADAS_GRATIS',casaId:'npt',valor:2.73,data:'2026-11-19',obs:'Sweet Bonanza — 15 ganhos visíveis'},
@@ -581,6 +593,11 @@
             for (const mov of movimentosConfirmados) {
                 if (!estado.movimentacoes.some(m=>m.id===mov.id)) estado.movimentacoes.push(mov);
             }
+            // Remover somente a conta inexistente e seu depósito inicial fictício.
+            // Não alterar as demais contas, bilhetes ou movimentações.
+            estado.casas = estado.casas.filter(c=>c.id!=='ept');
+            estado.movimentacoes = estado.movimentacoes.filter(m=>m.casaId!=='ept');
+            estado.entradas = estado.entradas.filter(e=>e.casaId!=='ept');
             salvarEstado();
             let periodoAtual = 'mensal';
             let mesExibido = new Date(2026, 10, 1); // Novembro 2026
