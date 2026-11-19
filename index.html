@@ -1199,7 +1199,9 @@
                 const stakeEscolhida=Number(document.getElementById('entradaStake').value);
                 const anterior=estado.entradas.find(x=>x.id===editId);
                 const creditoAnterior=anterior&&anterior.casaId===casaEscolhida&&anterior.resultado==='PENDENTE'?Number(anterior.stake):0;
-                if(!Number.isFinite(stakeEscolhida)||stakeEscolhida<=0||stakeEscolhida>disponivelCasa(casaEscolhida)+creditoAnterior){alert('Stake inválida ou saldo disponível insuficiente nesta casa.');return;}
+                const precisaReservarSaldo=!anterior || (anterior.resultado==='PENDENTE' && (anterior.casaId!==casaEscolhida || stakeEscolhida>Number(anterior.stake)));
+                if(!Number.isFinite(stakeEscolhida)||stakeEscolhida<=0){alert('Informe um valor apostado válido.');return;}
+                if(precisaReservarSaldo && stakeEscolhida>disponivelCasa(casaEscolhida)+creditoAnterior){alert('Saldo disponível insuficiente nesta casa.');return;}
                 const nova={id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:anterior?.resultado||'PENDENTE',retornoRecebido:anterior?.retornoRecebido,finalizadaEm:anterior?.finalizadaEm};
                 if(anterior)Object.assign(anterior,nova);else estado.entradas.push(nova);
                 salvarEstado();
