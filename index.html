@@ -533,7 +533,8 @@
                     {id:'ebr-3',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,00',odd:4,stake:10,resultado:'RED'},
                     {id:'ebr-4',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,89',odd:4.89,stake:3,resultado:'CASHOUT',retornoRecebido:6.23},
                     {id:'ebr-5',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 27,30',odd:27.3,stake:2,resultado:'RED'},
-                    {id:'ebr-6',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,67',odd:4.67,stake:7,resultado:'CASHOUT',retornoRecebido:16.87}
+                    {id:'ebr-6',data:'2026-11-08',casaId:'ebr',mercado:'Múltipla — odd 4,67',odd:4.67,stake:7,resultado:'CASHOUT',retornoRecebido:16.87},
+                    {id:'99play-5674230586',data:'2026-11-19',casaId:'n99',mercado:'Múltipla (2) — Manchester City x Fulham / Bayern Munich x Cologne — bilhete 5674230586; bônus potencial R$ 0,08',odd:3.81,stake:1.45,resultado:'PENDENTE'}
                 ],
                 movimentacoes: [
                     {id:'dep-nbr-1',tipo:'DEPOSITO',casaId:'nbr',valor:10,data:'2026-11-08',obs:'Comprovante'},
@@ -547,6 +548,11 @@
 
             let estado = carregarEstado();
             estado.movimentacoes ||= [];
+            // Migração não destrutiva: adicionar bilhete identificado mesmo para quem já tem dados locais.
+            if (!estado.entradas.some(e => e.id === '99play-5674230586')) {
+                estado.entradas.push({id:'99play-5674230586',data:'2026-11-19',casaId:'n99',mercado:'Múltipla (2) — Manchester City x Fulham / Bayern Munich x Cologne — bilhete 5674230586; bônus potencial R$ 0,08',odd:3.81,stake:1.45,resultado:'PENDENTE'});
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (err) { console.warn('Não foi possível persistir a entrada:', err); }
+            }
             let periodoAtual = 'mensal';
             let mesExibido = new Date(2026, 10, 1); // Novembro 2026
 
