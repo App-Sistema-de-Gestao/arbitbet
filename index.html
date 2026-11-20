@@ -162,7 +162,7 @@
         <button id="openDrawer" aria-label="Abrir menu" title="Menu" class="rounded-xl px-3 py-2 border border-emerald-500/50 text-neonGreen text-lg">☰</button>
         <!-- Ações Rápidas -->
         <div class="flex items-center gap-2 shrink-0">
-            <button id="btnInstalar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" style="display:none"><i class="fa-solid fa-download"></i> Instalar</button><button id="btnMovimentacao" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40">Depósito / Saque</button><button id="btnExportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" title="Backup JSON">Backup</button><button id="btnSair" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder">Sair</button><button id="btnAbrirCasa" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40 hover:bg-emerald-500/10 transition flex items-center gap-1.5">
+            <button id="btnInstalar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" style="display:none"><i class="fa-solid fa-download"></i> Instalar</button><button id="btnMovimentacao" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40">Depósito / Saque</button><button id="btnImportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-amber-300 border border-amber-500/40" title="Restaurar backup JSON">Importar</button><input id="arquivoImportacao" type="file" accept=".json,application/json" class="hidden" aria-label="Selecionar backup JSON"><button id="btnExportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" title="Backup JSON">Backup</button><button id="btnSair" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder">Sair</button><button id="btnAbrirCasa" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40 hover:bg-emerald-500/10 transition flex items-center gap-1.5">
                 <i class="fa-solid fa-building-columns"></i>
                 <span class="hidden sm:inline">Nova Casa</span>
             </button>
@@ -1279,6 +1279,35 @@
             document.getElementById('fecharMov').onclick=()=>fecharModal('modalMov');
             document.getElementById('formMov').onsubmit=e=>{e.preventDefault();const tipo=document.getElementById('movTipo').value,casaId=document.getElementById('movCasa').value,valor=Number(document.getElementById('movValor').value);if(!Number.isFinite(valor)||valor<=0)return;if(tipo==='SAQUE'&&valor>disponivelCasa(casaId)){alert('Saldo disponível insuficiente para saque.');return;}estado.movimentacoes.push({id:'m_'+Date.now(),tipo,casaId,valor,data:document.getElementById('movData').value,obs:document.getElementById('movObs').value});salvarEstado();renderizarTudo();fecharModal('modalMov');e.target.reset();mostrarFeedback('Movimentação registrada.');};
             document.getElementById('btnExportar').onclick=()=>{const b=new Blob([JSON.stringify({exportadoEm:new Date().toISOString(),...estado},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='arbitbet-backup-'+dataLocal()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
+            // Restauração explícita, substitutiva e validada. Nunca mesclar por ID ou duplicar lançamentos.
+            document.getElementById('btnImportar').onclick=()=>document.getElementById('arquivoImportacao').click();
+            document.getElementById('arquivoImportacao').onchange=async function(){
+                const arquivo=this.files?.[0];this.value='';if(!arquivo)return;
+                try{
+                    if(arquivo.size>5*1024*1024)throw Error('O arquivo ultrapassa 5 MB.');
+                    const importado=JSON.parse(await arquivo.text());
+                    const objeto=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+                    const unico=lista=>new Set(lista.map(x=>x.id)).size===lista.length;
+                    if(!objeto(importado)||!Array.isArray(importado.casas)||!Array.isArray(importado.entradas)||!Array.isArray(importado.movimentacoes))throw Error('Estrutura de backup incompatível.');
+                    if(!importado.casas.length||!unico(importado.casas)||!unico(importado.entradas)||!unico(importado.movimentacoes))throw Error('Há identificadores duplicados ou nenhuma casa.');
+                    const ids=new Set(importado.casas.map(c=>c.id));
+                    const validoNumero=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
+                    const validoId=id=>typeof id==='string'&&id.length>0&&id.length<150;
+                    const validaData=d=>typeof d==='string'&&/^\\d{4}-\\d{2}-\\d{2}/.test(d);
+                    if(!importado.casas.every(c=>objeto(c)&&validoId(c.id)&&typeof c.nome==='string'&&typeof c.conta==='string'&&validoNumero(Number(c.bancaInicial??0))))throw Error('Dados de casas inválidos.');
+                    if(!importado.entradas.every(e=>objeto(e)&&validoId(e.id)&&ids.has(e.casaId)&&validaData(e.data)&&typeof e.mercado==='string'&&validoNumero(e.stake)&&Number.isFinite(e.odd)&&e.odd>0&&['PENDENTE','GREEN','RED','CASHOUT','REEMBOLSO','ANULADA'].includes(e.resultado)&&(!['CASHOUT'].includes(e.resultado)||validoNumero(e.retornoRecebido))&&(e.retornoRecebido===undefined||validoNumero(e.retornoRecebido))))throw Error('Apostas inválidas ou associadas a casas inexistentes.');
+                    if(!importado.movimentacoes.every(m=>objeto(m)&&validoId(m.id)&&ids.has(m.casaId)&&validaData(m.data)&&['DEPOSITO','SAQUE','RODADAS_GRATIS'].includes(m.tipo)&&validoNumero(m.valor)))throw Error('Movimentações inválidas.');
+                    const totalDep=importado.movimentacoes.filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+m.valor,0);
+                    const aviso='Backup validado: '+importado.casas.length+' casas, '+importado.entradas.length+' apostas e '+importado.movimentacoes.length+' movimentações. Depósitos: '+formatBRL(totalDep)+'.\\n\\nATENÇÃO: esta ação SUBSTITUI os dados deste navegador (não soma nem mescla). Um backup automático dos dados atuais será baixado antes. Deseja continuar?';
+                    if(!confirm(aviso))return;
+                    const copia=new Blob([JSON.stringify({exportadoEm:new Date().toISOString(),...estado},null,2)],{type:'application/json'});
+                    const url=URL.createObjectURL(copia);const link=document.createElement('a');link.href=url;link.download='arbitbet-antes-importacao-'+dataLocal()+'.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+                    const novoEstado={casas:importado.casas,entradas:importado.entradas,movimentacoes:importado.movimentacoes};
+                    // Persistir antes de substituir o estado em memória; falhas não apagam os dados atuais.
+                    localStorage.setItem(STORAGE_KEY,JSON.stringify(novoEstado));
+                    estado=novoEstado;renderizarTudo();mostrarFeedback('Backup restaurado. Confira os saldos antes de continuar.');
+                }catch(erro){alert('Importação cancelada: '+erro.message);}
+            };
             // Bloqueio local do navegador; NÃO substitui autenticação de servidor.
             async function hashSenha(s){const data=new TextEncoder().encode(s);const hash=await crypto.subtle.digest('SHA-256',data);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
             const login=document.getElementById('loginOverlay');
