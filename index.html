@@ -134,6 +134,16 @@
         /* Ajustes para telas pequenas: impedir largura de desktop no Android. */
         html, body { width: 100%; max-width: 100%; }
         main { min-width: 0; }
+        /* Cabeçalho mobile em duas faixas, sem estourar a viewport. */
+        @media (max-width: 767px) {
+            header { display: flex; flex-direction: column; align-items: stretch; gap: .75rem; }
+            header > div:first-child { width: 100%; }
+            header .header-actions { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; gap: .5rem; min-width: 0; }
+            header .header-actions > button { min-width: 0; width: 100%; justify-content: center; text-align: center; white-space: normal; line-height: 1.2; padding: .65rem .25rem; }
+            header .header-actions #btnAbrirEntrada { grid-column: 3; justify-self: stretch; }
+            header .header-actions #btnInstalar[style*="none"] { display: none !important; }
+            #sec-resumo, main > .grid, main > section { max-width: 100%; min-width: 0; }
+        }
         @media (max-width: 767px) {
             header { flex-wrap: wrap; width: 100%; min-width: 0; }
             header > div { min-width: 0; max-width: 100%; }
@@ -173,7 +183,7 @@
         </div>
 
         <!-- Ações Rápidas -->
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="header-actions flex items-center gap-2 shrink-0">
             <button id="btnInstalar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" style="display:none"><i class="fa-solid fa-download"></i> Instalar</button><button id="btnMovimentacao" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40">Depósito / Saque</button><button id="btnImportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-amber-300 border border-amber-500/40" title="Restaurar backup JSON">Importar</button><input id="arquivoImportacao" type="file" accept=".json,application/json" class="hidden" aria-label="Selecionar backup JSON"><button id="btnExportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" title="Backup JSON">Backup</button><button id="btnSair" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder">Sair</button><button id="btnAbrirCasa" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40 hover:bg-emerald-500/10 transition flex items-center gap-1.5">
                 <i class="fa-solid fa-building-columns"></i>
                 <span class="hidden sm:inline">Nova Casa</span>
