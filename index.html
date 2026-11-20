@@ -1293,7 +1293,7 @@
                     const ids=new Set(importado.casas.map(c=>c.id));
                     const validoNumero=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0;
                     const validoId=id=>typeof id==='string'&&id.length>0&&id.length<150;
-                    const validaData=d=>typeof d==='string'&&/^\\d{4}-\\d{2}-\\d{2}/.test(d);
+                    const validaData=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}/.test(d);
                     if(!importado.casas.every(c=>objeto(c)&&validoId(c.id)&&typeof c.nome==='string'&&typeof c.conta==='string'&&validoNumero(Number(c.bancaInicial??0))))throw Error('Dados de casas inválidos.');
                     if(!importado.entradas.every(e=>objeto(e)&&validoId(e.id)&&ids.has(e.casaId)&&validaData(e.data)&&typeof e.mercado==='string'&&validoNumero(e.stake)&&Number.isFinite(e.odd)&&e.odd>0&&['PENDENTE','GREEN','RED','CASHOUT','REEMBOLSO','ANULADA'].includes(e.resultado)&&(!['CASHOUT'].includes(e.resultado)||validoNumero(e.retornoRecebido))&&(e.retornoRecebido===undefined||validoNumero(e.retornoRecebido))))throw Error('Apostas inválidas ou associadas a casas inexistentes.');
                     if(!importado.movimentacoes.every(m=>objeto(m)&&validoId(m.id)&&ids.has(m.casaId)&&validaData(m.data)&&['DEPOSITO','SAQUE','RODADAS_GRATIS'].includes(m.tipo)&&validoNumero(m.valor)))throw Error('Movimentações inválidas.');
