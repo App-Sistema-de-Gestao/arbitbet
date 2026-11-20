@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Arbitbet — Terminal de arbitragem e entradas</title>
-<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b0e14"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b0e14"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -136,7 +136,7 @@
 
     <!-- Barra Superior -->
     <header class="sticky top-0 z-40 bg-darkbg/95 backdrop-blur border-b border-emerald-500/25 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0">
+        <div class="flex items-center gap-3 min-w-0"><button id="openDrawer" type="button" aria-label="Expandir menu lateral" aria-expanded="false" title="Expandir menu" class="rounded-xl px-3 py-2 border border-emerald-500/50 text-neonGreen text-lg hover:bg-emerald-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400">☰</button>
             <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-400/60 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(0,255,128,0.2)]">
                 <i class="fa-solid fa-shark text-neonGreen text-lg"></i>
             </div>
@@ -159,7 +159,6 @@
             <button data-periodo="anual" class="periodo-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">Anual</button>
         </div>
 
-        <button id="openDrawer" aria-label="Abrir menu" title="Menu" class="rounded-xl px-3 py-2 border border-emerald-500/50 text-neonGreen text-lg">☰</button>
         <!-- Ações Rápidas -->
         <div class="flex items-center gap-2 shrink-0">
             <button id="btnInstalar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" style="display:none"><i class="fa-solid fa-download"></i> Instalar</button><button id="btnMovimentacao" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40">Depósito / Saque</button><button id="btnImportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-amber-300 border border-amber-500/40" title="Restaurar backup JSON">Importar</button><input id="arquivoImportacao" type="file" accept=".json,application/json" class="hidden" aria-label="Selecionar backup JSON"><button id="btnExportar" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder" title="Backup JSON">Backup</button><button id="btnSair" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-white border border-darkborder">Sair</button><button id="btnAbrirCasa" class="px-3 py-2 rounded-xl text-xs font-semibold bg-darkcard text-neonGreen border border-emerald-500/40 hover:bg-emerald-500/10 transition flex items-center gap-1.5">
@@ -192,32 +191,32 @@
     <!-- Layout Principal -->
     <div class="flex-1 flex flex-col md:flex-row">
         <!-- Menu Lateral (PC) -->
-        <aside class="hidden md:flex md:w-60 lg:w-64 bg-darkbg border-r border-darkborder flex-col justify-between p-4 shrink-0">
+        <aside id="desktopSidebar" aria-label="Navegação principal" class="hidden md:flex w-16 bg-darkbg border-r border-darkborder flex-col justify-between p-2 shrink-0 transition-[width,padding] duration-200">
             <nav class="space-y-1.5">
-                <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-3 mb-2">Operação</div>
-                <a href="#sec-resumo" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/10 text-neonGreen border border-emerald-400/35 text-sm font-medium">
+                <div class="sidebar-label hidden text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-3 mb-2">Operação</div>
+                <a href="#sec-resumo" title="Visão Geral" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/10 text-neonGreen border border-emerald-400/35 text-sm font-medium">
                     <i class="fa-solid fa-chart-line w-4 text-center"></i>
-                    <span>Visão Geral</span>
+                    <span class="sidebar-label hidden whitespace-nowrap">Visão Geral</span>
                 </a>
-                <a href="#sec-grafico" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                <a href="#sec-grafico" title="Evolução P&L" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
                     <i class="fa-solid fa-wave-square w-4 text-center"></i>
-                    <span>Evolução P&L</span>
+                    <span class="sidebar-label hidden whitespace-nowrap">Evolução P&L</span>
                 </a>
-                <a href="#sec-calendario" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                <a href="#sec-calendario" title="Calendário Diário" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
                     <i class="fa-solid fa-calendar-days w-4 text-center"></i>
-                    <span>Calendário Diário</span>
+                    <span class="sidebar-label hidden whitespace-nowrap">Calendário Diário</span>
                 </a>
-                <a href="#sec-casas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                <a href="#sec-casas" title="Casas & Contas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
                     <i class="fa-solid fa-wallet w-4 text-center"></i>
-                    <span>Casas & Contas</span>
+                    <span class="sidebar-label hidden whitespace-nowrap">Casas & Contas</span>
                 </a>
-                <a href="#sec-entradas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
+                <a href="#sec-entradas" title="Entradas & Arb" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
                     <i class="fa-solid fa-bolt w-4 text-center"></i>
-                    <span>Entradas & Arb</span>
+                    <span class="sidebar-label hidden whitespace-nowrap">Entradas & Arb</span>
                 </a>
             </nav>
 
-            <div class="p-3.5 rounded-xl bg-voidbg border border-emerald-500/25 space-y-2">
+            <div class="sidebar-label hidden p-3.5 rounded-xl bg-voidbg border border-emerald-500/25 space-y-2">
                 <div class="flex items-center justify-between text-xs">
                     <span class="text-slate-400">Estratégia</span>
                     <span class="mono text-neonGreen font-semibold">ARB + AVULSAS</span>
@@ -1283,7 +1282,20 @@
 
             const drawer=document.getElementById('drawer'),backdrop=document.getElementById('drawerBackdrop');
             function toggleDrawer(open){drawer.classList.toggle('-translate-x-full',!open);backdrop.classList.toggle('hidden',!open)}
-            document.getElementById('openDrawer').onclick=()=>toggleDrawer(true);document.getElementById('closeDrawer').onclick=()=>toggleDrawer(false);backdrop.onclick=()=>toggleDrawer(false);document.querySelectorAll('.drawer-link').forEach(a=>a.onclick=()=>toggleDrawer(false));
+            const desktopSidebar=document.getElementById('desktopSidebar'),menuToggle=document.getElementById('openDrawer');
+            let sidebarExpanded=false;
+            function setSidebarExpanded(open){
+                sidebarExpanded=open;
+                desktopSidebar.classList.toggle('w-16',!open);
+                desktopSidebar.classList.toggle('w-64',open);
+                desktopSidebar.classList.toggle('p-2',!open);
+                desktopSidebar.classList.toggle('p-4',open);
+                desktopSidebar.querySelectorAll('.sidebar-label').forEach(el=>el.classList.toggle('hidden',!open));
+                menuToggle.setAttribute('aria-expanded',String(open));
+                menuToggle.setAttribute('aria-label',open?'Recolher menu lateral':'Expandir menu lateral');
+                menuToggle.title=open?'Recolher menu':'Expandir menu';
+            }
+            menuToggle.onclick=()=>{if(window.matchMedia('(min-width: 768px)').matches)setSidebarExpanded(!sidebarExpanded);else toggleDrawer(true)};document.getElementById('closeDrawer').onclick=()=>toggleDrawer(false);backdrop.onclick=()=>toggleDrawer(false);document.querySelectorAll('.drawer-link').forEach(a=>a.onclick=()=>toggleDrawer(false));
             function atualizarLiquidacao(){const r=document.getElementById('liquidarResultado').value;const e=estado.entradas.find(x=>x.id===document.getElementById('liquidarId').value);if(!e)return;document.getElementById('liquidarRetornoWrap').classList.toggle('hidden',r!=='CASHOUT');const pnl=r==='GREEN'?e.stake*(e.odd-1):r==='RED'?-e.stake:r==='CASHOUT'?Number(document.getElementById('liquidarRetorno').value||0)-e.stake:0;document.getElementById('liquidarPreview').textContent='Resultado líquido: '+formatPnlBRL(pnl);}
             document.getElementById('liquidarResultado').onchange=atualizarLiquidacao;document.getElementById('liquidarRetorno').oninput=atualizarLiquidacao;
             document.getElementById('fecharLiquidar').onclick=()=>fecharModal('modalLiquidar');
