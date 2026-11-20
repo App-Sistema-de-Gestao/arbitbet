@@ -747,12 +747,12 @@
                         <div class="pt-2.5 border-t border-darkborder flex items-end justify-between text-xs mono">
                             <div>
                                 <span class="block text-[10px] text-slate-500 uppercase">Saldo Atual</span>
-                                <span class="text-sm font-bold text-white">${formatBRL(saldoAtual)}</span><span class="block text-[10px] text-amber-300">Disponível: ${formatBRL(saldoAtual-reservado)}</span>
+                                <span class="text-sm font-bold text-white">${formatBRL(saldoAtual-reservado)}</span>
                             </div>
-                            <div class="text-right">
-                                <span class="block text-[10px] text-slate-500 uppercase">Entradas</span>
-                                <span class="text-slate-300">${entradasCasa.length} ops</span>
-                            </div>
+                            ${reservado > 0 ? `<div class="text-right">
+                                <span class="block text-[10px] text-slate-500 uppercase">Saldo em aberto</span>
+                                <span class="text-amber-300">${formatBRL(reservado)}</span>
+                            </div>` : ''}
                         </div>
                     `;
                     const editar=document.createElement('button');editar.type='button';editar.className='text-xs text-sky-300 border border-sky-500/40 rounded-lg py-2';editar.textContent='✎ Editar casa / conta';editar.addEventListener('click',()=>{document.getElementById('casaEditId').value=casa.id;document.getElementById('casaNome').value=casa.nome;document.getElementById('casaConta').value=casa.conta;document.getElementById('casaBanca').value=casa.bancaInicial;document.getElementById('tituloCasa').textContent='Editar Casa / Conta';abrirModal('modalCasa');});card.appendChild(editar);
