@@ -857,7 +857,7 @@
                                 ${escapeHtml(item.resultado)}
                             </span>
                         </td>
-                        <td class="py-3 px-4 text-right font-bold ${isGreen ? 'text-neonGreen' : 'text-neonRed'}">
+                        <td class="py-3 px-4 text-right font-bold ${pnl > 0 ? 'text-neonGreen' : pnl < 0 ? 'text-neonRed' : 'text-slate-300'}">
                             ${formatPnlBRL(pnl)}
                         </td>
                         <td class="py-3 px-4 text-center">
