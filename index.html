@@ -560,61 +560,23 @@
 
             let estado = carregarEstado();
             estado.movimentacoes ||= [];
-            // Migração não destrutiva: adicionar bilhete identificado mesmo para quem já tem dados locais.
-            if (!estado.entradas.some(e => e.id === '99play-5674230586')) {
-                estado.entradas.push({id:'99play-5674230586',data:'2026-11-19',casaId:'n99',mercado:'Múltipla (2) — Manchester City x Fulham / Bayern Munich x Cologne — bilhete 5674230586; bônus potencial R$ 0,08',odd:3.81,stake:1.45,resultado:'PENDENTE'});
-                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); } catch (err) { console.warn('Não foi possível persistir a entrada:', err); }
-            }
-            // Conciliação incremental: preserva registros do usuário e evita duplicar lançamentos.
-            const registrosConfirmados = [
-                {id:'nbr-5672688958',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 24 jogos',odd:9.8,stake:18.75,resultado:'PENDENTE',retornoPotencial:190.31},
-                {id:'nbr-5668666010',data:'2026-11-19',casaId:'nbr',mercado:'Dupla — seleção anulada',odd:85.25,stake:5,resultado:'CASHOUT',retornoRecebido:38.75},
-                {id:'nbr-5669107806',data:'2026-11-17',casaId:'nbr',mercado:'Múltipla — 30 seleções',odd:11.91,stake:5,resultado:'RED'},
-                {id:'nbr-5662121076',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — Futebol',odd:4.34,stake:25,resultado:'RED'},
-                {id:'nbr-5661257610',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla',odd:36,stake:5,resultado:'RED'},
-                {id:'nbr-5657146196',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 10 seleções',odd:3348.63,stake:1,resultado:'RED'},
-                {id:'nbr-5656465878',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 5 seleções',odd:67.2,stake:2,resultado:'RED'},
-                {id:'nbr-5635480533',data:'2026-11-08',casaId:'nbr',mercado:'Simples — Futebol',odd:10,stake:1,resultado:'GREEN',retornoRecebido:10},
-                {id:'nbr-red-extra-4',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 4 seleções (conferir ID)',odd:1,stake:2,resultado:'RED'},
-                {id:'nbr-red-extra-dupla',data:'2026-11-19',casaId:'nbr',mercado:'Dupla (conferir ID)',odd:1,stake:4,resultado:'RED'},
-                {id:'nbr-red-extra-tripla',data:'2026-11-19',casaId:'nbr',mercado:'Tripla (conferir ID)',odd:1,stake:2.5,resultado:'RED'},
-                {id:'nbr-red-extra-5',data:'2026-11-19',casaId:'nbr',mercado:'Múltipla — 5 seleções (conferir ID)',odd:1,stake:4,resultado:'RED'},
-                {id:'npt-3',data:'2026-11-16',casaId:'npt',mercado:'Múltipla — Futebol (10 jogos)',odd:7.909,stake:10,resultado:'PENDENTE',retornoPotencial:79.09}
-            ];
-            for (const entrada of registrosConfirmados) {
-                if (!estado.entradas.some(e=>e.id===entrada.id)) estado.entradas.push(entrada);
-            }
-            const movimentosConfirmados = [
-                {id:'rg-nbr-ajuste-150',tipo:'RODADAS_GRATIS',casaId:'nbr',valor:1.50,data:'2026-11-19',obs:'Ajuste de conciliação para saldo disponível R$ 20,00; não comprovado como prêmio'},
-                {id:'dep-ebr-1511',tipo:'DEPOSITO',casaId:'ebr',valor:15,data:'2026-11-08',obs:'Depósito único confirmado às 15:39'},
-                {id:'rg-ebr-016',tipo:'RODADAS_GRATIS',casaId:'ebr',valor:0.16,data:'2026-11-08',obs:'Golden Dragon — rodadas grátis'},
-                {id:'rg-npt-273',tipo:'RODADAS_GRATIS',casaId:'npt',valor:2.73,data:'2026-11-19',obs:'Sweet Bonanza — 15 ganhos visíveis'},
-                {id:'rg-npt-047',tipo:'RODADAS_GRATIS',casaId:'npt',valor:0.47,data:'2026-11-19',obs:'Ajuste de conciliação; ganho individual não comprovado'}
-            ];
-            for (const mov of movimentosConfirmados) {
-                if (!estado.movimentacoes.some(m=>m.id===mov.id)) estado.movimentacoes.push(mov);
-            }
-            // Remover somente a conta inexistente e seu depósito inicial fictício.
-            // Não alterar as demais contas, bilhetes ou movimentações.
-            estado.casas = estado.casas.filter(c=>c.id!=='ept');
-            estado.movimentacoes = estado.movimentacoes.filter(m=>m.casaId!=='ept');
-            estado.entradas = estado.entradas.filter(e=>e.casaId!=='ept');
-            salvarEstado();
+            // Não alterar automaticamente registros importados ou existentes.
+            // Novos lançamentos devem ocorrer somente por ação explícita do usuário.
             let periodoAtual = 'mensal';
             let mesExibido = new Date(2026, 10, 1); // Novembro 2026
 
             function carregarEstado() {
                 try {
                     const salvo = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_KEY);
-                    if (!salvo) return JSON.parse(JSON.stringify(dadosIniciais));
+                    if (!salvo) return { casas: [], entradas: [], movimentacoes: [] };
                     const parsed = JSON.parse(salvo);
                     if (!Array.isArray(parsed.casas) || !Array.isArray(parsed.entradas)) {
-                        return JSON.parse(JSON.stringify(dadosIniciais));
+                        return { casas: [], entradas: [], movimentacoes: [] };
                     }
                     return { ...parsed, movimentacoes: parsed.movimentacoes || [] };
                 } catch (err) {
                     console.error('Erro ao ler dados locais:', err);
-                    return JSON.parse(JSON.stringify(dadosIniciais));
+                    return { casas: [], entradas: [], movimentacoes: [] };
                 }
             }
 
