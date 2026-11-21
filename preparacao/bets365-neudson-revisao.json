@@ -1,5 +1,5 @@
 {
-  "status": "RASCUNHO_NAO_IMPORTAR",
+  "status": "VALIDADO_PARA_IMPLEMENTACAO_NAO_IMPORTAR_DIRETAMENTE",
   "casa": {
     "id": "bets365-neudson-20261121",
     "nome": "Bets365",
@@ -106,12 +106,13 @@
     }
   ],
   "pendencias": [
-    "Verificar se esses depósitos ou bilhetes já constam na nuvem",
-    "Conferir saldo real da casa"
+    "Verificar se esses depósitos ou bilhetes já constam na nuvem"
   ],
   "nota": "Arquivo de preparação, não é backup importável. Não importar no Arbitbet até validação.",
   "confirmacoes": {
     "dataDasNoveApostas": "2026-11-21",
-    "origem": "Confirmação do usuário"
+    "origem": "Confirmação do usuário",
+    "saldoDisponivel": 1,
+    "confirmadoPeloUsuario": true
   }
 }
