@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -259,6 +259,18 @@ function modal(){
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
  actions.append(button('Laboratório — criar evento offline (fila fictícia)',()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||list.length>=20)throw Error('Fila inválida ou cheia');const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';list.push({id:'offline-'+crypto.randomUUID(),origem,data:new Date().toISOString()});localStorage.setItem(key,JSON.stringify(list));info('Evento fictício salvo SOMENTE neste aparelho. Fila offline: '+list.length+'. Nenhum dado enviado ao Firebase.');}catch(e){info('Falha ao criar evento offline: '+e.message);}}));
  actions.append(button('Laboratório — enviar fila offline (isolado)',async()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||!list.length)return info('Fila offline vazia neste aparelho.');if(!confirm('Enviar '+list.length+' eventos fictícios da fila offline ao laboratório? NÃO altera apostas reais.'))return;const s=await enviarEventosLaboratorio(list);localStorage.removeItem(key);info('Fila fictícia conciliada: revisão '+s.revisao+' · '+s.eventos.length+' eventos no laboratório. Fila local limpa.');}catch(e){info('Fila offline PRESERVADA: '+e.message);}}));
+ actions.append(button('Concorrência REAL — 1. Capturar base neste aparelho',async()=>{
+  try{const r=await capturarBaseConcorrenciaReal();info('BASE CAPTURADA NESTE APARELHO · '+r.quantidade+' apostas fictícias · revisão '+r.revisao+'. NÃO atualize a página antes de enviar. Nenhum dado real alterado.');}
+  catch(e){info('Captura bloqueada: '+e.message);}
+ }));
+ actions.append(button('Concorrência REAL — 2. Enviar aposta da base capturada',async()=>{
+  if(!confirm('Enviar uma aposta fictícia a partir da base capturada neste aparelho? Somente laboratório isolado.'))return;
+  try{
+   const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';
+   const r=await enviarConcorrenciaReal(origem);
+   info('CONCORRÊNCIA REAL GRAVADA · '+r.quantidade+' apostas fictícias preservadas · base capturada na revisão '+r.baseRevisao+' · revisão atual '+r.revisao+' · base desatualizada: '+(r.baseDesatualizada?'SIM':'NÃO')+'. Nenhum dado real alterado.');
+  }catch(e){info('Concorrência real BLOQUEADA: '+e.message+'. Nenhum dado real alterado.');}
+ }));
  actions.append(button('Homologação — simular concorrência (somente laboratório)',async()=>{
   if(!confirm('Simular duas apostas simultâneas e um conflito RED/GREEN em memória, gravando apenas o relatório no laboratório isolado?'))return;
   try{
