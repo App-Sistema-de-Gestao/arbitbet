@@ -15,6 +15,8 @@ const counts = s => s ? `${s.casas?.length ?? 0} casas · ${s.entradas?.length ?
 const valid = s => s && Array.isArray(s.casas) && Array.isArray(s.entradas) && Array.isArray(s.movimentacoes);
 const button = (text, fn) => { const b = document.createElement('button'); b.type='button'; b.textContent=text; b.className='rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-white bg-slate-800'; b.onclick=fn; return b; };
 let remote=null, email='';
+let authEpoch=0;
+let currentUid=null;
 let autoTimer=null;
 let lastAutoNotice='';
 let autoUploadEnabled=false;
@@ -24,6 +26,7 @@ let autoError='';
 let syncBaseline=null;
 let syncRevision=0;
 let syncBusy=false;
+let syncRunToken=0;
 let syncTimer=null;
 let labTimer=null,labLastRevision=null,labPolling=false;
 let labFinanceCount=null;
@@ -64,16 +67,19 @@ function pauseSync(message){
  info('Sincronização pausada por segurança: '+message);
 }
 function stopSafeSync(){
+ syncRunToken++;
  if(syncTimer){clearInterval(syncTimer);syncTimer=null;}
  syncBaseline=null;syncRevision=0;
 }
 async function safeSync(){
  if(syncBusy||!email||!syncBaseline||autoUploadEnabled)return;
  syncBusy=true;
+ const token=syncRunToken,uid=currentUid;
  try{
   const local=window.arbitbetCloudBridge.get();
   if(!valid(local))throw Error('Estado local inválido.');
   const result=await sincronizarTresVias(syncBaseline,local,syncRevision);
+  if(token!==syncRunToken||uid!==currentUid)return;
   const latest=window.arbitbetCloudBridge.get();
   if(!sameState(local,latest)){
    // Alteração local durante a transação: nunca avançar a base sem conciliar.
@@ -84,7 +90,7 @@ async function safeSync(){
   setBaseline({...result.estado,revisao:result.revisao});
   $('cloudLocal').textContent=resumo(result.estado);
   $('cloudRemote').textContent=resumo(result.estado)+' · Revisão '+result.revisao;
- }catch(e){pauseSync(e.message);}
+ }catch(e){if(token===syncRunToken&&uid===currentUid)pauseSync(e.message);}
  finally{syncBusy=false;}
 }
 function startSafeSync(data){
@@ -121,49 +127,15 @@ function diagnosticText(d){
  const names={casas:'Casas',entradas:'Apostas',movimentacoes:'Movimentações'};
  return Object.entries(d).map(([k,v])=>names[k]+': '+v.apenasLocal.length+' só no navegador, '+v.apenasNuvem.length+' só na nuvem, '+v.divergentes.length+' com conteúdo diferente').join(' | ');
 }
-function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(autoWriteTimer){clearTimeout(autoWriteTimer);autoWriteTimer=null;}autoUploadEnabled=false;updateAutoButton();}
-function updateAutoButton(){const b=$('cloudAutoWrite');if(b)b.textContent=autoUploadEnabled?'Desativar envio automático (teste)':'Ativar envio automático (teste)';}
-function scheduleAutoWrite(){
- if(!autoUploadEnabled||!email)return;
- if(autoWriteTimer)clearTimeout(autoWriteTimer);
- autoWriteTimer=setTimeout(()=>{autoWriteTimer=null;void autoWrite();},1500);
-}
-async function autoWrite(){
- if(!autoUploadEnabled||!email||uploadBusy)return;
- uploadBusy=true;
- try{
-  const local=window.arbitbetCloudBridge.get();
-  if(!valid(local)||!local.casas.length)throw Error('Estado local vazio ou inválido.');
-  const result=await mesclarSemPerdas(local);
-  // Nunca substituir alterações locais posteriores ao início da operação.
-  const latest=window.arbitbetCloudBridge.get();
-  if(!sameState(local,latest)){info('Houve novas alterações durante o envio. Refaça a conferência.');autoUploadEnabled=false;updateAutoButton();return;}
-  window.arbitbetCloudBridge.replace(result.estado);
-  await refresh();
-  info(result.semAlteracoes?'Verificação automática: sem alterações.':'Novos registros enviados automaticamente com segurança (revisão '+result.revisao+').');
- }catch(e){
-  autoUploadEnabled=false;updateAutoButton();
-  info('Envio automático pausado por segurança: '+e.message+'. Nenhum registro local foi substituído.');
- }finally{uploadBusy=false;}
-}
-async function toggleAutoWrite(){
- stopSafeSync();
- if(autoUploadEnabled){autoUploadEnabled=false;updateAutoButton();info('Envio automático desativado.');return;}
- if(!email)return info('Entre no Firebase antes de ativar.');
- const local=window.arbitbetCloudBridge.get();
- const cloud=await consultarNuvem();
- if(!cloud.existe||!valid(cloud))return info('Nuvem vazia ou indisponível: ativação bloqueada.');
- const d=differences(local,cloud);
- if(Object.values(d).some(x=>x.divergentes.length))return info('Ativação bloqueada: existem registros divergentes. '+diagnosticText(d));
- if(!confirm('ATIVAR ENVIO AUTOMÁTICO NESTA ABA?\\n\\nNovos registros serão mesclados no Firebase após cada alteração. Edições conflitantes serão bloqueadas. Não será permitido apagar registros remotamente. O recurso ficará ativo apenas nesta sessão. Faça backup antes de prosseguir.'))return;
- downloadJson(local,'arbitbet-antes-envio-automatico');
- autoUploadEnabled=true;updateAutoButton();
- info('Envio automático ativado nesta aba. Alterações novas serão mescladas; conflitos bloqueiam o envio.');
-}
+function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(autoWriteTimer){clearTimeout(autoWriteTimer);autoWriteTimer=null;}autoUploadEnabled=false;}
+// O envio automático legado foi desativado: somente conciliação de três vias.
+function scheduleAutoWrite(){}
 async function autoCheck(){
+ const epoch=authEpoch,uid=currentUid;
  if(!document.hidden && email){
   try{
    const data=await consultarNuvem();
+   if(epoch!==authEpoch||uid!==currentUid)return;
    if(!data.existe||!valid(data))return;
    const previous=remote?.revisao;
    remote=data;
@@ -332,7 +304,6 @@ function modal(){
  }));
  actions.append(button('Testar sincronização em memória (sem gravar)',()=>{const t=testarConciliacaoEmMemoria();info('Teste sem gravar: '+t.aprovados+'/'+t.total+' cenários aprovados. '+t.cenarios.filter(x=>!x.ok).map(x=>x.nome+': '+x.erro).join(' | '));}));
  actions.append(button('Conciliar 99play — 2 apostas + 1 RED (teste)',conciliar99playUI));
- const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
  // Controles de laboratório e manutenção ficam recolhidos no uso diário.
@@ -353,7 +324,8 @@ function modal(){
  setActions(false);
 }
 async function refresh(){
- try{info('Consultando...');const data=await consultarNuvem();remote=data.existe?data:null;
+ const epoch=authEpoch,uid=currentUid;
+ try{info('Consultando...');const data=await consultarNuvem();if(epoch!==authEpoch||uid!==currentUid)return;remote=data.existe?data:null;
  $('cloudRemote').textContent=remote?resumo(remote)+' · Revisão '+remote.revisao:'Sem registros na nuvem';
  $('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());
  setActions(true);if(!remote)$('cloudDownload').disabled=true;
@@ -519,15 +491,31 @@ async function uploadCloud(){
  catch(e){info('Envio NÃO concluído: '+e.message+' Atualize a consulta antes de tentar novamente.');}
 }
 window.addEventListener('arbitbet:local-change',()=>{
- scheduleAutoWrite();
- if(syncBaseline && !autoUploadEnabled)void safeSync();
+ if(syncBaseline)void safeSync();
 });
 function start(){
  if(!window.arbitbetCloudBridge)return;
  modal();
  const btn=button('☁ Nuvem (teste)',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
- try{configurarFirebase(config);observarUsuario(user=>{email=user?.email||'';$('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);$('cloudUser').textContent=user?'Conectado: '+email:'';remote=null;setActions(false);$('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';if(user){void refresh().then(()=>{if(remote)startSafeSync(remote);});startAuto();startLabWatch();}else{stopAuto();stopSafeSync();stopLabWatch();lastAutoNotice='';}});}
+ try{configurarFirebase(config);observarUsuario(user=>{
+  const epoch=++authEpoch;
+  stopAuto();stopSafeSync();stopLabWatch();
+  currentUid=user?.uid||null;
+  email=user?.email||'';
+  remote=null;lastAutoNotice='';
+  $('cloudLogin').classList.toggle('hidden',!!user);
+  $('cloudLogged').classList.toggle('hidden',!user);
+  $('cloudUser').textContent=user?'Conectado: '+email:'';
+  setActions(false);
+  $('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';
+  if(user){
+   void refresh().then(()=>{
+    if(epoch===authEpoch&&currentUid===user.uid&&remote)startSafeSync(remote);
+   });
+   startAuto();startLabWatch();
+  }
+});}
  catch(e){info('Firebase indisponível: '+e.message);}
  $('cloudLogin').onsubmit=async e=>{e.preventDefault();try{info('Autenticando...');await entrar($('cloudEmail').value,$('cloudPassword').value);$('cloudPassword').value='';info('Login realizado.');}catch(err){info('Login não realizado: '+err.message);}};
  $('cloudLogout').onclick=async()=>{await sair();info('Saiu da nuvem. Os dados locais permanecem.');};
