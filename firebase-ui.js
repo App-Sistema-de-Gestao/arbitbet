@@ -277,6 +277,65 @@ async function refresh(){
  info('Consulta concluída. Nenhum dado foi modificado.');
  }catch(e){remote=null;setActions(false);info('Falha na consulta: '+e.message);}
 }
+
+// Recuperação estrita: somente os 3 registros novos e os 2 RED confirmados.
+// Não permite nenhuma outra diferença, nem alteração de casas ou movimentações.
+function verificarRecuperacao38(local,cloud){
+ const idsNovos=['e_1795296124225','e_1795296211277','e_1795296312501'];
+ const idsRed=['npt-3','nbr-5672688958'];
+ const d=differences(local,cloud);
+ const vazias=x=>!x.apenasLocal.length&&!x.apenasNuvem.length&&!x.divergentes.length;
+ if(local.casas.length!==5||cloud.casas.length!==5||local.entradas.length!==35||cloud.entradas.length!==38||
+    local.movimentacoes.length!==12||cloud.movimentacoes.length!==12||
+    !vazias(d.casas)||!vazias(d.movimentacoes)||
+    d.entradas.apenasLocal.length||d.entradas.apenasNuvem.length!==3||
+    d.entradas.divergentes.length!==2||
+    idsNovos.some(id=>!d.entradas.apenasNuvem.includes(id))||
+    idsRed.some(id=>!d.entradas.divergentes.includes(id)))throw Error('Diferenças fora do cenário validado. '+diagnosticText(d));
+ const l=new Map(local.entradas.map(x=>[x.id,x]));
+ const c=new Map(cloud.entradas.map(x=>[x.id,x]));
+ for(const id of idsRed){
+  const before=l.get(id),after=c.get(id);
+  if(before?.resultado!=='PENDENTE'||after?.resultado!=='RED')throw Error('Resultado inesperado: '+id);
+  const {resultado:a,finalizadaEm:b,...baseLocal}=before;
+  const {resultado:z,finalizadaEm:y,...baseCloud}=after;
+  if(stable(baseLocal)!==stable(baseCloud))throw Error('Outros campos alterados: '+id);
+ }
+ for(const id of idsNovos){
+  const x=c.get(id);
+  if(!x||x.resultado!=='RED'||x.casaId!=='nbr')throw Error('Nova entrada inesperada: '+id);
+ }
+ return d;
+}
+async function recuperar38ComSeguranca(){
+ if(!email)return info('Entre no Firebase antes da recuperação.');
+ if(syncBusy||autoUploadEnabled)return info('Sincronização ou envio em andamento. Aguarde.');
+ const local=window.arbitbetCloudBridge.get();
+ try{
+  const cloud=await consultarNuvem();
+  if(!cloud.existe||!valid(cloud))throw Error('Nuvem indisponível.');
+  verificarRecuperacao38(local,cloud);
+  if(!sameState(local,window.arbitbetCloudBridge.get()))throw Error('Dados locais mudaram durante a verificação.');
+  const msg='RECUPERAÇÃO CONTROLADA NO CELULAR?\\n\\nA nuvem contém 38 entradas e o aparelho 35.\\nSerão acrescentadas 3 entradas e atualizados 2 resultados PENDENTE para RED.\\nNenhuma alteração será enviada à nuvem.\\nDois backups JSON serão baixados antes da recuperação.\\n\\nConfirma?';
+  if(!confirm(msg))return info('Recuperação cancelada; nada alterado.');
+  // Nova leitura evita usar uma cópia remota desatualizada após a confirmação.
+  const atual=await consultarNuvem();
+  if(!atual.existe||atual.revisao!==cloud.revisao||!sameState(cloud,atual))throw Error('A nuvem mudou; recomece a conferência.');
+  if(!sameState(local,window.arbitbetCloudBridge.get()))throw Error('O aparelho mudou; recomece a conferência.');
+  verificarRecuperacao38(local,atual);
+  downloadJson(local,'arbitbet-recuperacao38-celular-antes');
+  downloadJson(atual,'arbitbet-recuperacao38-nuvem-antes');
+  stopSafeSync();
+  window.arbitbetCloudBridge.replace({casas:clone(atual.casas),entradas:clone(atual.entradas),movimentacoes:clone(atual.movimentacoes)});
+  const depois=window.arbitbetCloudBridge.get();
+  if(!sameState(depois,atual))throw Error('A verificação posterior falhou. Guarde os backups.');
+  remote=atual;
+  $('cloudLocal').textContent=resumo(depois);
+  startSafeSync(atual);
+  info('RECUPERAÇÃO VALIDADA: 5 casas, 38 entradas, 12 movimentações; revisão '+atual.revisao+'. Nuvem não modificada.');
+ }catch(e){info('RECUPERAÇÃO BLOQUEADA: '+e.message+' Não execute restauração manual.');}
+}
+
 async function restoreCloud(){
  stopSafeSync();
  if(!remote||!valid(remote))return info('Nenhum backup válido encontrado na nuvem.');
