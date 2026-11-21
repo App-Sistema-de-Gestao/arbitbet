@@ -66,3 +66,37 @@ export async function gravarComConfirmacao(estado, revisaoEsperada, confirmado) 
     return revisao;
   });
 }
+
+
+// Mesclagem transacional conservadora: nunca apaga registros e bloqueia IDs divergentes.
+export async function mesclarSemPerdas(local) {
+  validarEstado(local);
+  const ref = pathFor(usuarioAtual().uid);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const atual = snap.exists() ? snap.data() : {revisao:0,casas:[],entradas:[],movimentacoes:[]};
+    validarEstado(atual);
+    const combinado = {};
+    for (const campo of ['casas','entradas','movimentacoes']) {
+      const mapa = new Map();
+      for (const item of atual[campo]) {
+        if (!item?.id || mapa.has(String(item.id))) throw new Error('ID inválido ou duplicado na nuvem: '+campo);
+        mapa.set(String(item.id), item);
+      }
+      for (const item of local[campo]) {
+        if (!item?.id) throw new Error('ID inválido no navegador: '+campo);
+        const antigo = mapa.get(String(item.id));
+        if (antigo && JSON.stringify(antigo)!==JSON.stringify(item)) {
+          throw new Error('Conflito em '+campo+' / '+item.id+'. Nenhum dado foi alterado. É preciso conciliar a edição antes de sincronizar.');
+        }
+        mapa.set(String(item.id), item);
+      }
+      combinado[campo]=Array.from(mapa.values());
+    }
+    const ids=new Set(combinado.casas.map(c=>c.id));
+    if(combinado.entradas.some(e=>!ids.has(e.casaId))||combinado.movimentacoes.some(m=>!ids.has(m.casaId)))throw new Error('Referências inválidas; sincronização cancelada.');
+    const revisao=(atual.revisao||0)+1;
+    tx.set(ref,{...combinado,revisao,versaoEsquema:1,atualizadoEm:new Date().toISOString()});
+    return {estado:combinado,revisao};
+  });
+}
