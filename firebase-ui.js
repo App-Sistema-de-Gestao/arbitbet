@@ -15,6 +15,35 @@ const counts = s => s ? `${s.casas?.length ?? 0} casas · ${s.entradas?.length ?
 const valid = s => s && Array.isArray(s.casas) && Array.isArray(s.entradas) && Array.isArray(s.movimentacoes);
 const button = (text, fn) => { const b = document.createElement('button'); b.type='button'; b.textContent=text; b.className='rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-white bg-slate-800'; b.onclick=fn; return b; };
 let remote=null, email='';
+let autoTimer=null;
+let lastAutoNotice='';
+const sameState=(a,b)=>valid(a)&&valid(b)&&['casas','entradas','movimentacoes'].every(k=>JSON.stringify(a[k])===JSON.stringify(b[k]));
+function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}}
+async function autoCheck(){
+ if(!document.hidden && email){
+  try{
+   const data=await consultarNuvem();
+   if(!data.existe||!valid(data))return;
+   const previous=remote?.revisao;
+   remote=data;
+   $('cloudRemote').textContent=resumo(data)+' · Revisão '+data.revisao;
+   const local=window.arbitbetCloudBridge.get();
+   const isEmpty=!local.casas.length&&!local.entradas.length&&!local.movimentacoes.length;
+   if(isEmpty){
+    window.arbitbetCloudBridge.replace({casas:clone(data.casas),entradas:clone(data.entradas),movimentacoes:clone(data.movimentacoes)});
+    $('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());
+    info('Dados restaurados automaticamente neste navegador vazio. Nenhuma gravação na nuvem.');
+   }else if(!sameState(local,data)&&lastAutoNotice!==String(data.revisao)){
+    lastAutoNotice=String(data.revisao);
+    info('A nuvem possui dados diferentes (revisão '+data.revisao+'). Nenhum registro local foi substituído. Use Mesclar sem excluir após conferir.');
+   }else if(previous!==data.revisao&&sameState(local,data)){
+    info('Dados locais e nuvem conferidos automaticamente (revisão '+data.revisao+').');
+   }
+  }catch(e){info('Consulta automática indisponível: '+e.message);}
+ }
+}
+function startAuto(){stopAuto();autoTimer=setInterval(autoCheck,30000);autoCheck();}
+
 function info(t){$('cloudInfo').textContent=t;}
 function setActions(enabled){['cloudDownload','cloudUpload','cloudMerge'].forEach(id=>$(id).disabled=!enabled);}
 function downloadJson(s, prefix){const a=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({...s,exportadoEm:new Date().toISOString()},null,2)],{type:'application/json'}));a.href=url;a.download=prefix+'-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
@@ -122,7 +151,7 @@ function start(){
  modal();
  const btn=button('☁ Nuvem (teste)',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
- try{configurarFirebase(config);observarUsuario(user=>{email=user?.email||'';$('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);$('cloudUser').textContent=user?'Conectado: '+email:'';remote=null;setActions(false);$('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';if(user)refresh();});}
+ try{configurarFirebase(config);observarUsuario(user=>{email=user?.email||'';$('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);$('cloudUser').textContent=user?'Conectado: '+email:'';remote=null;setActions(false);$('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';if(user){refresh();startAuto();}else{stopAuto();lastAutoNotice='';}});}
  catch(e){info('Firebase indisponível: '+e.message);}
  $('cloudLogin').onsubmit=async e=>{e.preventDefault();try{info('Autenticando...');await entrar($('cloudEmail').value,$('cloudPassword').value);$('cloudPassword').value='';info('Login realizado.');}catch(err){info('Login não realizado: '+err.message);}};
  $('cloudLogout').onclick=async()=>{await sair();info('Saiu da nuvem. Os dados locais permanecem.');};
