@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, observarUsuario } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, conciliar99play, observarUsuario } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -132,6 +132,7 @@ function modal(){
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
  actions.append(button('Diagnosticar diferenças (somente leitura)',diagnose));
+ actions.append(button('Conciliar 99play — 2 apostas + 1 RED (teste)',conciliar99playUI));
  const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
@@ -165,6 +166,24 @@ async function diagnose(){
   const diff=differences(window.arbitbetCloudBridge.get(),data);
   info('Diagnóstico (somente leitura): '+diagnosticText(diff)+'. Nenhum dado foi alterado.');
  }catch(e){info('Diagnóstico interrompido: '+e.message);}
+}
+async function conciliar99playUI(){
+ if(autoUploadEnabled)return info('Desative o envio automático antes da conciliação.');
+ const local=window.arbitbetCloudBridge.get();
+ try{
+  info('Conferindo a nuvem antes da conciliação...');
+  const cloud=await consultarNuvem();
+  if(!cloud.existe||!valid(cloud))throw Error('Nuvem indisponível.');
+  const d=differences(local,cloud);
+  if(d.entradas.apenasLocal.length!==2||d.entradas.apenasNuvem.length!==0||d.entradas.divergentes.length!==1||d.entradas.divergentes[0]!=='99play-5674230586'||d.entradas.apenasLocal.some(id=>!['e_1795282405185','e_1795282491842'].includes(id))||d.casas.apenasLocal.length||d.casas.apenasNuvem.length||d.casas.divergentes.length||d.movimentacoes.apenasLocal.length||d.movimentacoes.apenasNuvem.length||d.movimentacoes.divergentes.length)throw Error('Diagnóstico diferente do esperado. '+diagnosticText(d));
+  if(!confirm('CONCILIAR 99PLAY NA NUVEM?\\n\\nAdicionar 2 apostas RED (R$ 10 e R$ 14) e atualizar somente a aposta existente de R$ 1,45 de PENDENTE para RED.\\n\\n5 casas, 35 apostas, 12 movimentações após a operação.\\n\\nA operação é atômica e bloqueia qualquer outra divergência. Serão baixados backups do navegador e da nuvem. Confirmar?'))return info('Operação cancelada. Nenhum dado alterado.');
+  downloadJson(local,'arbitbet-99play-local-antes-conciliacao');
+  downloadJson(cloud,'arbitbet-99play-nuvem-antes-conciliacao');
+  info('Validando todos os registros e conciliando...');
+  const result=await conciliar99play(local);
+  await refresh();
+  info('Conciliação concluída na revisão '+result.revisao+'. Confira o diagnóstico: 35 apostas, 5 casas e 12 movimentações.');
+ }catch(e){info('Conciliação não concluída: '+e.message);}
 }
 async function prepararBets365(){
  try{
