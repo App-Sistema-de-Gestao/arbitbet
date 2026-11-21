@@ -70,7 +70,7 @@ async function mergeCloud(){
   const result=await mesclarSemPerdas(local);
   window.arbitbetCloudBridge.replace(result.estado);
   await refresh();
-  info('Mesclagem concluída com segurança (revisão '+result.revisao+'). Confira os saldos.');
+  info(result.semAlteracoes?'Dados já sincronizados. Nenhuma gravação nova foi necessária (revisão '+result.revisao+').':'Mesclagem concluída com segurança (revisão '+result.revisao+'). Confira os saldos.');
  }catch(e){info('MESCLAGEM NÃO CONCLUÍDA: '+e.message+' Nenhum registro local foi substituído.');}
 }
 async function uploadCloud(){
