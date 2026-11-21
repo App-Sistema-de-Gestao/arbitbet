@@ -234,3 +234,26 @@ export function testarConciliacaoEmMemoria(){
  check('Exclusão bloqueada',()=>{try{conciliarTresVias(base,{...base,entradas:[]},base);}catch(e){if(e.message.includes('Exclusão detectada'))return;throw e;}throw Error('Exclusão não bloqueada');});
  return {total:scenarios.length,aprovados:scenarios.filter(x=>x.ok).length,cenarios:scenarios};
 }
+
+// Laboratório separado: usa documento exclusivo, nunca users/{uid}/state/current.
+// Acesso depende das regras Firestore; falha de permissão não afeta dados reais.
+const laboratorioRef=uid=>doc(db,'users',uid,'sync_lab','isolated_v1');
+export async function consultarLaboratorio(){
+ const snap=await getDoc(laboratorioRef(usuarioAtual().uid));
+ return snap.exists()?{existe:true,...snap.data()}:{existe:false,revisao:0};
+}
+export async function executarLaboratorio(acao){
+ if(!['iniciar','computador','celular','resetar'].includes(acao))throw Error('Ação inválida.');
+ const ref=laboratorioRef(usuarioAtual().uid);
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  const old=snap.exists()?snap.data():null;
+  if(old && old.tipo!=='arbitbet-sync-lab-v1')throw Error('Documento de laboratório inesperado; bloqueado.');
+  if(acao!=='iniciar' && !old)throw Error('Inicie o laboratório primeiro.');
+  const eventos=acao==='iniciar'||acao==='resetar'?[]:[...(old.eventos||[])];
+  if(acao==='computador'||acao==='celular')eventos.push({id:'lab-'+(old.revisao+1),origem:acao,descricao:'Evento fictício sem aposta nem valor real',data:new Date().toISOString()});
+  const next={tipo:'arbitbet-sync-lab-v1',revisao:(old?.revisao||0)+1,eventos,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);
+  return next;
+ });
+}
