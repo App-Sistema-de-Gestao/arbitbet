@@ -169,3 +169,50 @@ export async function conciliar99play(local) {
     return {revisao,estado:resultado};
   });
 }
+
+
+// Sincronização bidirecional por base comum. Edições concorrentes no mesmo ID
+// são bloqueadas; inclusão independente em outro dispositivo é preservada.
+const canonical=x=>Array.isArray(x)?x.map(canonical):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().filter(k=>x[k]!==undefined).map(k=>[k,canonical(x[k])])):x;
+const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+function indexar(items,campo){
+ const m=new Map();
+ for(const item of items){if(!item?.id||m.has(String(item.id)))throw Error('ID ausente ou duplicado: '+campo);m.set(String(item.id),item);}
+ return m;
+}
+function conciliarTresVias(base,local,cloud){
+ const result={};
+ for(const campo of ['casas','entradas','movimentacoes']){
+  const b=indexar(base[campo],campo),l=indexar(local[campo],campo),r=indexar(cloud[campo],campo);
+  const merged=new Map();
+  for(const id of new Set([...b.keys(),...l.keys(),...r.keys()])){
+   const before=b.get(id),mine=l.get(id),theirs=r.get(id);
+   if(before && (!mine||!theirs))throw Error('Exclusão detectada em '+campo+'/'+id+'. Sincronização pausada.');
+   const localChanged=!equal(mine,before),cloudChanged=!equal(theirs,before);
+   if(localChanged&&cloudChanged&&!equal(mine,theirs))throw Error('Edição concorrente em '+campo+'/'+id+'. Sincronização pausada.');
+   const chosen=localChanged?mine:theirs;
+   if(chosen)merged.set(id,structuredClone(chosen));
+  }
+  result[campo]=[...merged.values()];
+ }
+ const casas=new Set(result.casas.map(x=>x.id));
+ if(result.entradas.some(x=>!casas.has(x.casaId))||result.movimentacoes.some(x=>!casas.has(x.casaId)))throw Error('Referências inválidas. Sincronização pausada.');
+ return result;
+}
+export async function sincronizarTresVias(base,local,revisaoBase){
+ validarEstado(base);validarEstado(local);
+ if(!Number.isInteger(revisaoBase)||revisaoBase<1)throw Error('Revisão de referência inválida.');
+ const ref=pathFor(usuarioAtual().uid);
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists())throw Error('Dados remotos ausentes.');
+  const cloud=snap.data();validarEstado(cloud);
+  if(!Number.isInteger(cloud.revisao)||cloud.revisao<revisaoBase)throw Error('Revisão remota inconsistente.');
+  const merged=conciliarTresVias(base,local,cloud);
+  const changed=['casas','entradas','movimentacoes'].some(k=>!equal(merged[k],cloud[k]));
+  if(!changed)return {estado:merged,revisao:cloud.revisao,semAlteracoes:true};
+  const revisao=cloud.revisao+1;
+  tx.set(ref,{...merged,revisao,versaoEsquema:1,atualizadoEm:new Date().toISOString()});
+  return {estado:merged,revisao};
+ });
+}
