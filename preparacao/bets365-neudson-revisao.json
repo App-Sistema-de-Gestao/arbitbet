@@ -1,0 +1,120 @@
+{
+  "status": "VALIDADO_PARA_IMPLEMENTACAO_NAO_IMPORTAR_DIRETAMENTE",
+  "casa": {
+    "id": "bets365-neudson-20261121",
+    "nome": "Bets365",
+    "conta": "Neudson",
+    "bancaInicial": 0
+  },
+  "depositos": [
+    {
+      "id": "bets365-neudson-deposito-01",
+      "tipo": "DEPOSITO",
+      "valor": 20,
+      "data": "2026-11-20",
+      "obs": "20/11/2026 22:57 — validar comprovante",
+      "casaId": "bets365-neudson-20261121"
+    },
+    {
+      "id": "bets365-neudson-deposito-02",
+      "tipo": "DEPOSITO",
+      "valor": 10,
+      "data": "2026-11-21",
+      "obs": "21/11/2026 04:02 — validar comprovante",
+      "casaId": "bets365-neudson-20261121"
+    }
+  ],
+  "apostas": [
+    {
+      "id": "bets365-neudson-aposta-01",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Tripla futebol — Newcastle/Arsenal; Real Madrid/Celta; Schalke/Stuttgart",
+      "odd": 547.12,
+      "stake": 1,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-02",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Tripla futebol — Chapecoense/Cruzeiro; Bahia/Coritiba; Palmeiras/Flamengo",
+      "odd": 451.59,
+      "stake": 1,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-03",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Tripla futebol — Palmeiras/Flamengo; Bahia/Coritiba; Chapecoense/Cruzeiro",
+      "odd": 552.14,
+      "stake": 1,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-04",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Múltipla 9 lutas",
+      "odd": 382.54,
+      "stake": 1,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-05",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Múltipla 6 lutas",
+      "odd": 178.71,
+      "stake": 1,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-06",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Tripla lutas",
+      "odd": 27.76,
+      "stake": 2,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-07",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Múltipla 7 lutas",
+      "odd": 78.38,
+      "stake": 2,
+      "resultado": "PENDENTE"
+    },
+    {
+      "id": "bets365-neudson-aposta-08",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Quádrupla NBA",
+      "odd": 3.83,
+      "stake": 10,
+      "resultado": "RED"
+    },
+    {
+      "id": "bets365-neudson-aposta-09",
+      "casaId": "bets365-neudson-20261121",
+      "data": "2026-11-21",
+      "mercado": "Múltipla 7 futebol — defesas dos goleiros",
+      "odd": 56.59,
+      "stake": 10,
+      "resultado": "RED"
+    }
+  ],
+  "pendencias": [
+    "Verificação automática de IDs na nuvem antes de inserir"
+  ],
+  "nota": "Arquivo de preparação, não é backup importável. Não importar no Arbitbet até validação.",
+  "confirmacoes": {
+    "dataDasNoveApostas": "2026-11-21",
+    "origem": "Confirmação do usuário",
+    "saldoDisponivel": 1,
+    "confirmadoPeloUsuario": true
+  }
+}
