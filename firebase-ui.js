@@ -167,7 +167,10 @@ async function autoCheck(){
    }else if(!sameState(local,data)&&lastAutoNotice!==String(data.revisao)){
     lastAutoNotice=String(data.revisao);
     info('Diferenças detectadas (revisão '+data.revisao+'). '+diagnosticText(differences(local,data))+'. Nada foi alterado.');
-   }else if(previous!==data.revisao&&sameState(local,data)){
+    }else if(sameState(local,data)){
+     // Reiniciar após conciliação segura, mesmo quando o login começou divergente.
+     if(!syncBaseline && !syncBusy && !autoUploadEnabled)startSafeSync(data);
+     else if(previous!==data.revisao){
     info('Dados locais e nuvem conferidos automaticamente (revisão '+data.revisao+').');
    }
   }catch(e){info('Consulta automática indisponível: '+e.message);}
