@@ -65,8 +65,8 @@ async function safeSync(){
   const result=await sincronizarTresVias(syncBaseline,local,syncRevision);
   const latest=window.arbitbetCloudBridge.get();
   if(!sameState(local,latest)){
-   // Não substituir alterações feitas durante a operação; próxima rodada as concilia.
-   setBaseline({...result.estado,revisao:result.revisao});
+   // Alteração local durante a transação: nunca avançar a base sem conciliar.
+   pauseSync('Houve alteração local durante a gravação. Dados preservados; confira diferenças antes de retomar.');
    return;
   }
   if(!sameState(latest,result.estado))window.arbitbetCloudBridge.replace(result.estado);
