@@ -11,15 +11,17 @@
       "id": "bets365-neudson-deposito-01",
       "tipo": "DEPOSITO",
       "valor": 20,
-      "data": null,
-      "obs": "20/11/2026 22:57 — validar comprovante"
+      "data": "2026-11-20",
+      "obs": "20/11/2026 22:57 — validar comprovante",
+      "casaId": "bets365-neudson-20261121"
     },
     {
       "id": "bets365-neudson-deposito-02",
       "tipo": "DEPOSITO",
       "valor": 10,
-      "data": null,
-      "obs": "21/11/2026 04:02 — validar comprovante"
+      "data": "2026-11-21",
+      "obs": "21/11/2026 04:02 — validar comprovante",
+      "casaId": "bets365-neudson-20261121"
     }
   ],
   "apostas": [
@@ -106,7 +108,7 @@
     }
   ],
   "pendencias": [
-    "Verificar se esses depósitos ou bilhetes já constam na nuvem"
+    "Verificação automática de IDs na nuvem antes de inserir"
   ],
   "nota": "Arquivo de preparação, não é backup importável. Não importar no Arbitbet até validação.",
   "confirmacoes": {
