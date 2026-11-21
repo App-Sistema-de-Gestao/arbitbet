@@ -257,3 +257,20 @@ export async function executarLaboratorio(acao){
   return next;
  });
 }
+
+// Fila de eventos fictícios criados offline; nunca acessa o estado financeiro.
+export async function enviarEventosLaboratorio(eventos){
+ if(!Array.isArray(eventos)||!eventos.length||eventos.length>20)throw Error('Fila de laboratório inválida.');
+ for(const e of eventos)if(typeof e.id!=='string'||!/^offline-[a-zA-Z0-9-]{8,80}$/.test(e.id)||!['celular','computador'].includes(e.origem))throw Error('Evento fictício inválido.');
+ const ref=laboratorioRef(usuarioAtual().uid);
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório não iniciado.');
+  const old=snap.data(),map=new Map((old.eventos||[]).map(e=>[e.id,e]));
+  for(const e of eventos)if(!map.has(e.id))map.set(e.id,{id:e.id,origem:e.origem,descricao:'Evento fictício offline',data:e.data});
+  const lista=[...map.values()];
+  if(lista.length===(old.eventos||[]).length)return {revisao:old.revisao,eventos:lista,semAlteracoes:true};
+  const next={...old,revisao:old.revisao+1,eventos:lista,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);return next;
+ });
+}
