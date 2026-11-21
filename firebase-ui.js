@@ -40,6 +40,7 @@ function modal(){
  const restore=button('Restaurar da nuvem', restoreCloud);restore.id='cloudDownload';actions.append(restore);
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
+ actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
  setActions(false);
 }
@@ -60,6 +61,39 @@ async function restoreCloud(){
  try{window.arbitbetCloudBridge.replace({casas:clone(remote.casas),entradas:clone(remote.entradas),movimentacoes:clone(remote.movimentacoes)});$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());info('Restauração local concluída. Confira os saldos.');}
  catch(e){info('Falha ao restaurar: '+e.message);}
 }
+
+async function prepararBets365(){
+ try{
+  info('Conferindo pacote validado...');
+  const response=await fetch('./preparacao/bets365-neudson-revisao.json',{cache:'no-store'});
+  if(!response.ok)throw new Error('Pacote não encontrado.');
+  const p=await response.json();
+  if(p.confirmacoes?.saldoDisponivel!==1||p.apostas?.length!==9||p.depositos?.length!==2)throw new Error('Pacote não validado.');
+  const local=window.arbitbetCloudBridge.get();
+  if(!valid(local))throw new Error('Dados locais inválidos.');
+  const existingCasa=local.casas.find(x=>x.id===p.casa.id);
+  if(existingCasa && JSON.stringify(existingCasa)!==JSON.stringify(p.casa))throw new Error('Casa com ID divergente. Nenhuma alteração.');
+  const additions={casas:[p.casa],entradas:p.apostas,movimentacoes:p.depositos};
+  const result={};
+  for(const [key,items] of Object.entries(additions)){
+   const map=new Map(local[key].map(x=>[String(x.id),x]));
+   if(map.size!==local[key].length)throw new Error('Identificadores duplicados em '+key);
+   for(const item of items){
+    const old=map.get(String(item.id));
+    if(old && JSON.stringify(old)!==JSON.stringify(item))throw new Error('Registro divergente em '+key+': '+item.id);
+    map.set(String(item.id),item);
+   }
+   result[key]=[...map.values()];
+  }
+  const msg='PREPARAR BETS365 — NEUDSON NO NAVEGADOR?\\n\\n1 casa, 9 apostas (R$ 29,00), 2 depósitos (R$ 30,00).\\n\\nNão envia nada ao Firebase. O backup local será baixado. Depois será necessário usar Mesclar sem excluir. Confirma?';
+  if(!confirm(msg)){info('Preparação cancelada.');return;}
+  downloadJson(local,'arbitbet-antes-bets365');
+  window.arbitbetCloudBridge.replace(result);
+  $('cloudLocal').textContent=resumo(result);
+  info('Bets365 preparada APENAS neste navegador. Confira 5 casas, 33 entradas e 12 movimentações. Depois use Mesclar sem excluir para enviar à nuvem.');
+ }catch(e){info('Preparação NÃO concluída: '+e.message);}
+}
+
 async function mergeCloud(){
  const local=window.arbitbetCloudBridge.get();
  if(!valid(local))return info('Dados locais inválidos.');
