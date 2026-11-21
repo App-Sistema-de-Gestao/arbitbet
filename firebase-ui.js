@@ -211,6 +211,18 @@ function modal(){
   downloadJson(local,'arbitbet-prevoo-financeiro-local');
   info((iguais&&expected?'PRÉ-VOO APROVADO':'PRÉ-VOO REQUER CONFERÊNCIA')+' · navegador: '+resumo(local)+' · nuvem: '+resumo(cloud)+' · revisão '+cloud.revisao+' · '+diagnosticText(d)+'. Backup local baixado; nenhuma gravação efetuada.');
  }catch(e){info('Pré-voo interrompido: '+e.message+'. Nenhum dado gravado.');}}));
+ actions.append(button('Simular recuperação do backup (sem alterar dados)',async()=>{try{
+  if(!email)throw Error('Entre no Firebase.');
+  const localAntes=window.arbitbetCloudBridge.get(),cloud=await consultarNuvem();
+  if(!valid(localAntes)||!cloud.existe||!valid(cloud))throw Error('Estado indisponível.');
+  const copia=clone({casas:cloud.casas,entradas:cloud.entradas,movimentacoes:cloud.movimentacoes});
+  const serializado=JSON.stringify(copia),restaurado=JSON.parse(serializado);
+  if(!valid(restaurado)||!sameState(copia,restaurado))throw Error('Falha no teste de reconstrução.');
+  const localDepois=window.arbitbetCloudBridge.get();
+  if(!sameState(localAntes,localDepois))throw Error('Dados locais mudaram durante a simulação. Teste interrompido.');
+  const iguais=sameState(localDepois,restaurado);
+  info('RECUPERAÇÃO SIMULADA APROVADA · revisão '+cloud.revisao+' · backup reconstruído: '+resumo(restaurado)+' · '+(iguais?'navegador e nuvem idênticos':'ATENÇÃO: navegador e nuvem divergentes')+'. Nenhum registro local ou remoto foi modificado.');
+ }catch(e){info('RECUPERAÇÃO SIMULADA NÃO APROVADA: '+e.message+'. Nenhuma restauração executada.');}}));
  actions.append(button('Laboratório Firebase — consultar (isolado)',async()=>{try{const s=await consultarLaboratorio();info(s.existe?'LABORATÓRIO: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios. Última origem: '+(s.eventos.at(-1)?.origem||'nenhuma'):'LABORATÓRIO ainda não criado. Nenhum registro financeiro foi consultado ou alterado.');}catch(e){info('Laboratório indisponível: '+e.message+' (possível regra de acesso Firestore).');}}));
  actions.append(button('Laboratório Firebase — iniciar (isolado)',async()=>{if(!confirm('Criar laboratório separado no Firebase? NÃO altera apostas, casas, movimentações nem o documento financeiro. Confirma?'))return;try{const s=await executarLaboratorio('iniciar');info('Laboratório criado. Revisão '+s.revisao+'. Nenhuma aposta real alterada.');}catch(e){info('Laboratório não iniciado: '+e.message+'. Não altere regras de segurança sem revisão.');}}));
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
