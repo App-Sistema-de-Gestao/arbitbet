@@ -351,6 +351,44 @@ export async function testarConcorrenciaHomologacao(){
  });
 }
 
+// Concorrência real entre aparelhos: cada aba captura sua própria base em memória.
+// A transação lê o estado ATUAL do Firebase e concilia contra a base antiga capturada.
+// Somente sync_lab/isolated_v1; nunca acessa state/current.
+let baseConcorrenciaReal=null;
+export async function capturarBaseConcorrenciaReal(){
+ const uid=usuarioAtual().uid;
+ const snap=await getDoc(laboratorioRef(uid));
+ if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1'||!snap.data().homologacaoFinanceira)throw Error('Homologação financeira isolada não iniciada.');
+ const d=snap.data(),estado=structuredClone(d.homologacaoFinanceira);
+ validarEstado(estado);
+ baseConcorrenciaReal={uid,estado,revisao:d.revisao};
+ return {revisao:d.revisao,quantidade:estado.entradas.length};
+}
+export async function enviarConcorrenciaReal(origem){
+ if(!['computador','celular'].includes(origem))throw Error('Origem inválida.');
+ const uid=usuarioAtual().uid;
+ const base=baseConcorrenciaReal;
+ if(!base||base.uid!==uid)throw Error('Capture a base neste aparelho antes de enviar.');
+ const local=structuredClone(base.estado);
+ if(local.entradas.length>=12)throw Error('Limite de 12 apostas fictícias.');
+ const id='conc-real-'+crypto.randomUUID();
+ local.entradas.push({id,casaId:'hom-casa',resultado:'PENDENTE',stake:1,odd:2,origem,criadoEm:new Date().toISOString()});
+ const ref=laboratorioRef(uid);
+ const result=await runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado ausente.');
+  const d=snap.data(),cloud=d.homologacaoFinanceira;
+  validarEstado(cloud);
+  if(d.revisao<base.revisao)throw Error('Revisão do laboratório retrocedeu; operação bloqueada.');
+  const merged=conciliarTresVias(base.estado,local,cloud);
+  if(merged.entradas.length>12)throw Error('Limite de apostas fictícias excedido.');
+  tx.set(ref,{...d,homologacaoFinanceira:merged,revisao:d.revisao+1,atualizadoEm:new Date().toISOString()});
+  return {revisao:d.revisao+1,quantidade:merged.entradas.length,baseRevisao:base.revisao,baseDesatualizada:d.revisao!==base.revisao,origem};
+ });
+ baseConcorrenciaReal=null; // obriga nova captura; evita envios duplicados
+ return result;
+}
+
 // Fila de eventos fictícios criados offline; nunca acessa o estado financeiro.
 export async function enviarEventosLaboratorio(eventos){
  if(!Array.isArray(eventos)||!eventos.length||eventos.length>20)throw Error('Fila de laboratório inválida.');
