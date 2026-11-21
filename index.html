@@ -1323,8 +1323,22 @@
             document.getElementById('liquidarResultado').onchange=atualizarLiquidacao;document.getElementById('liquidarRetorno').oninput=atualizarLiquidacao;
             document.getElementById('fecharLiquidar').onclick=()=>fecharModal('modalLiquidar');
             document.getElementById('formLiquidar').onsubmit=ev=>{ev.preventDefault();const e=estado.entradas.find(x=>x.id===document.getElementById('liquidarId').value);if(!e||e.resultado!=='PENDENTE')return;const r=document.getElementById('liquidarResultado').value;const valor=Number(document.getElementById('liquidarRetorno').value);if(r==='CASHOUT'&&(!document.getElementById('liquidarRetorno').value||!Number.isFinite(valor)||valor<0)){alert('Informe o valor recebido no cashout.');return;}e.resultado=r;e.retornoRecebido=r==='CASHOUT'?valor:undefined;e.finalizadaEm=dataLocal();salvarEstado();renderizarTudo();fecharModal('modalLiquidar');mostrarFeedback('Resultado registrado e indicadores atualizados.');};
+            // Ponte limitada ao módulo experimental; sem sincronização automática.
+            window.arbitbetCloudBridge = Object.freeze({
+                get: () => JSON.parse(JSON.stringify(estado)),
+                replace: (novo) => {
+                    if (!novo || !Array.isArray(novo.casas) || !Array.isArray(novo.entradas) || !Array.isArray(novo.movimentacoes)) throw Error('Backup inválido.');
+                    const ids = new Set(novo.casas.map(c => c.id));
+                    if (ids.size !== novo.casas.length || novo.entradas.some(e => !ids.has(e.casaId)) || novo.movimentacoes.some(m => !ids.has(m.casaId))) throw Error('Referências inválidas.');
+                    const serializado = JSON.stringify(novo);
+                    localStorage.setItem(STORAGE_KEY, serializado);
+                    estado = JSON.parse(serializado);
+                    renderizarTudo();
+                }
+            });
             renderizarTudo();
         })();
     </script>
+    <script type="module" src="./firebase-ui.js"></script>
 </body>
 </html>
