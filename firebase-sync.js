@@ -180,7 +180,7 @@ function indexar(items,campo){
  for(const item of items){if(!item?.id||m.has(String(item.id)))throw Error('ID ausente ou duplicado: '+campo);m.set(String(item.id),item);}
  return m;
 }
-function conciliarTresVias(base,local,cloud){
+export function conciliarTresVias(base,local,cloud){
  const result={};
  for(const campo of ['casas','entradas','movimentacoes']){
   const b=indexar(base[campo],campo),l=indexar(local[campo],campo),r=indexar(cloud[campo],campo);
@@ -215,4 +215,22 @@ export async function sincronizarTresVias(base,local,revisaoBase){
   tx.set(ref,{...merged,revisao,versaoEsquema:1,atualizadoEm:new Date().toISOString()});
   return {estado:merged,revisao};
  });
+}
+
+ 
+// Testes em memória, sem Firebase, sem localStorage e sem modificar apostas reais.
+export function testarConciliacaoEmMemoria(){
+ const casa={id:'teste-casa'};
+ const aposta={id:'teste-aposta',casaId:'teste-casa',resultado:'PENDENTE',stake:1,odd:2};
+ const base={casas:[casa],entradas:[aposta],movimentacoes:[]};
+ const novo={id:'teste-nova',casaId:'teste-casa',resultado:'RED',stake:2,odd:3};
+ const scenarios=[];
+ function check(nome,fn){try{fn();scenarios.push({nome,ok:true});}catch(e){scenarios.push({nome,ok:false,erro:e.message});}}
+ check('Inclusão local',()=>{const s=conciliarTresVias(base,{...base,entradas:[aposta,novo]},base);if(s.entradas.length!==2)throw Error('Inclusão perdida');});
+ check('Atualização RED',()=>{const s=conciliarTresVias(base,{...base,entradas:[{...aposta,resultado:'RED'}]},base);if(s.entradas[0].resultado!=='RED')throw Error('Resultado perdido');});
+ check('Atualização GREEN remota',()=>{const s=conciliarTresVias(base,base,{...base,entradas:[{...aposta,resultado:'GREEN'}]});if(s.entradas[0].resultado!=='GREEN')throw Error('Resultado remoto perdido');});
+ check('Inclusões independentes',()=>{const s=conciliarTresVias(base,{...base,entradas:[aposta,novo]},{...base,entradas:[aposta,{...novo,id:'teste-outra'}]});if(s.entradas.length!==3)throw Error('Inclusão concorrente perdida');});
+ check('Conflito bloqueado',()=>{try{conciliarTresVias(base,{...base,entradas:[{...aposta,resultado:'RED'}]},{...base,entradas:[{...aposta,resultado:'GREEN'}]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Conflito não bloqueado');});
+ check('Exclusão bloqueada',()=>{try{conciliarTresVias(base,{...base,entradas:[]},base);}catch(e){if(e.message.includes('Exclusão detectada'))return;throw e;}throw Error('Exclusão não bloqueada');});
+ return {total:scenarios.length,aprovados:scenarios.filter(x=>x.ok).length,cenarios:scenarios};
 }
