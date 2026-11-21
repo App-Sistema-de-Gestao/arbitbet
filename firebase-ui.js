@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, conciliar99play, observarUsuario } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, conciliar99play, observarUsuario } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -183,6 +183,7 @@ function modal(){
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
  actions.append(button('Diagnosticar diferenças (somente leitura)',diagnose));
+ actions.append(button('Testar sincronização em memória (sem gravar)',()=>{const t=testarConciliacaoEmMemoria();info('Teste sem gravar: '+t.aprovados+'/'+t.total+' cenários aprovados. '+t.cenarios.filter(x=>!x.ok).map(x=>x.nome+': '+x.erro).join(' | '));}));
  actions.append(button('Conciliar 99play — 2 apostas + 1 RED (teste)',conciliar99playUI));
  const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
