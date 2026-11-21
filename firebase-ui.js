@@ -176,7 +176,7 @@ async function autoCheck(){
 function startAuto(){stopAuto();autoTimer=setInterval(autoCheck,30000);autoCheck();}
 
 function info(t){$('cloudInfo').textContent=t;}
-function setActions(enabled){['cloudDownload','cloudUpload','cloudMerge'].forEach(id=>$(id).disabled=!enabled);}
+function setActions(enabled){['cloudDownload','cloudMerge'].forEach(id=>{const el=$(id);if(el)el.disabled=!enabled;});}
 function downloadJson(s, prefix){const a=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({...s,exportadoEm:new Date().toISOString()},null,2)],{type:'application/json'}));a.href=url;a.download=prefix+'-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
 function resumo(s){const dep=(s.movimentacoes||[]).filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+Number(m.valor||0),0);return counts(s)+' · Depósitos R$ '+dep.toFixed(2).replace('.',',');}
 function modal(){
@@ -198,7 +198,8 @@ function modal(){
  const actions=$('cloudActions');
  actions.append(button('Consultar nuvem', refresh));
  const restore=button('Restaurar da nuvem', restoreCloud);restore.id='cloudDownload';actions.append(restore);
- const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
+ // Substituição integral da nuvem retirada da interface para evitar sobrescrita acidental.
+ // A sincronização transacional segura continua ativa; o legado não é exposto.
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
  actions.append(button('Diagnosticar diferenças (somente leitura)',diagnose));
  actions.append(button('Verificar este dispositivo (somente leitura)',async()=>{try{const data=await consultarNuvem();if(!data.existe||!valid(data))throw Error('Nuvem indisponível');const local=window.arbitbetCloudBridge.get();const d=differences(local,data);const iguais=sameState(local,data);remote=data;$('cloudLocal').textContent=resumo(local);$('cloudRemote').textContent=resumo(data)+' · Revisão '+data.revisao;info((iguais?'DISPOSITIVO CONFERIDO: dados idênticos. ':'ATENÇÃO: existem diferenças. ')+diagnosticText(d)+'. Nenhum dado foi gravado ou restaurado.');}catch(e){info('Verificação interrompida: '+e.message);}}));
@@ -207,7 +208,7 @@ function modal(){
   const local=window.arbitbetCloudBridge.get(),cloud=await consultarNuvem();
   if(!valid(local)||!cloud.existe||!valid(cloud))throw Error('Dados locais ou nuvem indisponíveis.');
   const d=differences(local,cloud),iguais=sameState(local,cloud);
-  const expected=local.casas.length===5&&local.entradas.length===35&&local.movimentacoes.length===12&&cloud.casas.length===5&&cloud.entradas.length===35&&cloud.movimentacoes.length===12;
+  const expected=iguais;
   downloadJson(local,'arbitbet-prevoo-financeiro-local');
   info((iguais&&expected?'PRÉ-VOO APROVADO':'PRÉ-VOO REQUER CONFERÊNCIA')+' · navegador: '+resumo(local)+' · nuvem: '+resumo(cloud)+' · revisão '+cloud.revisao+' · '+diagnosticText(d)+'. Backup local baixado; nenhuma gravação efetuada.');
  }catch(e){info('Pré-voo interrompido: '+e.message+'. Nenhum dado gravado.');}}));
@@ -247,6 +248,21 @@ function modal(){
  const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
+ // Controles de laboratório e manutenção ficam recolhidos no uso diário.
+ const advanced=document.createElement('details');
+ advanced.className='w-full border-t border-slate-700 pt-2';
+ const summary=document.createElement('summary');
+ summary.textContent='Ferramentas avançadas de testes e manutenção';
+ summary.className='cursor-pointer text-sm text-amber-300';
+ const advancedActions=document.createElement('div');
+ advancedActions.className='flex flex-wrap gap-2 mt-3';
+ advanced.append(summary,advancedActions);
+ actions.append(advanced);
+ for(const el of [...actions.children]){
+  if(el===advanced)continue;
+  const t=el.textContent||'';
+  if(/Laboratório|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+ }
  setActions(false);
 }
 async function refresh(){
