@@ -17,6 +17,10 @@ const button = (text, fn) => { const b = document.createElement('button'); b.typ
 let remote=null, email='';
 let autoTimer=null;
 let lastAutoNotice='';
+let autoUploadEnabled=false;
+let uploadBusy=false;
+let autoWriteTimer=null;
+let autoError='';
 // Compara por ID e chaves ordenadas, ignorando apenas ordem de arrays e propriedades.
 function canonical(value){
  if(Array.isArray(value))return value.map(canonical);
@@ -39,7 +43,44 @@ function diagnosticText(d){
  const names={casas:'Casas',entradas:'Apostas',movimentacoes:'Movimentações'};
  return Object.entries(d).map(([k,v])=>names[k]+': '+v.apenasLocal.length+' só no navegador, '+v.apenasNuvem.length+' só na nuvem, '+v.divergentes.length+' com conteúdo diferente').join(' | ');
 }
-function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}}
+function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(autoWriteTimer){clearTimeout(autoWriteTimer);autoWriteTimer=null;}autoUploadEnabled=false;updateAutoButton();}
+function updateAutoButton(){const b=$('cloudAutoWrite');if(b)b.textContent=autoUploadEnabled?'Desativar envio automático (teste)':'Ativar envio automático (teste)';}
+function scheduleAutoWrite(){
+ if(!autoUploadEnabled||!email)return;
+ if(autoWriteTimer)clearTimeout(autoWriteTimer);
+ autoWriteTimer=setTimeout(()=>{autoWriteTimer=null;void autoWrite();},1500);
+}
+async function autoWrite(){
+ if(!autoUploadEnabled||!email||uploadBusy)return;
+ uploadBusy=true;
+ try{
+  const local=window.arbitbetCloudBridge.get();
+  if(!valid(local)||!local.casas.length)throw Error('Estado local vazio ou inválido.');
+  const result=await mesclarSemPerdas(local);
+  // Nunca substituir alterações locais posteriores ao início da operação.
+  const latest=window.arbitbetCloudBridge.get();
+  if(!sameState(local,latest)){info('Houve novas alterações durante o envio. Refaça a conferência.');autoUploadEnabled=false;updateAutoButton();return;}
+  window.arbitbetCloudBridge.replace(result.estado);
+  await refresh();
+  info(result.semAlteracoes?'Verificação automática: sem alterações.':'Novos registros enviados automaticamente com segurança (revisão '+result.revisao+').');
+ }catch(e){
+  autoUploadEnabled=false;updateAutoButton();
+  info('Envio automático pausado por segurança: '+e.message+'. Nenhum registro local foi substituído.');
+ }finally{uploadBusy=false;}
+}
+async function toggleAutoWrite(){
+ if(autoUploadEnabled){autoUploadEnabled=false;updateAutoButton();info('Envio automático desativado.');return;}
+ if(!email)return info('Entre no Firebase antes de ativar.');
+ const local=window.arbitbetCloudBridge.get();
+ const cloud=await consultarNuvem();
+ if(!cloud.existe||!valid(cloud))return info('Nuvem vazia ou indisponível: ativação bloqueada.');
+ const d=differences(local,cloud);
+ if(Object.values(d).some(x=>x.divergentes.length))return info('Ativação bloqueada: existem registros divergentes. '+diagnosticText(d));
+ if(!confirm('ATIVAR ENVIO AUTOMÁTICO NESTA ABA?\\n\\nNovos registros serão mesclados no Firebase após cada alteração. Edições conflitantes serão bloqueadas. Não será permitido apagar registros remotamente. O recurso ficará ativo apenas nesta sessão. Faça backup antes de prosseguir.'))return;
+ downloadJson(local,'arbitbet-antes-envio-automatico');
+ autoUploadEnabled=true;updateAutoButton();
+ info('Envio automático ativado nesta aba. Alterações novas serão mescladas; conflitos bloqueiam o envio.');
+}
 async function autoCheck(){
  if(!document.hidden && email){
   try{
@@ -91,6 +132,7 @@ function modal(){
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
  actions.append(button('Diagnosticar diferenças (somente leitura)',diagnose));
+ const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
  setActions(false);
@@ -179,6 +221,7 @@ async function uploadCloud(){
  try{info('Verificando revisão e gravando...');const revision=await gravarComConfirmacao(local,remote?.revisao??0,true);info('Enviado com sucesso (revisão '+revision+').');await refresh();}
  catch(e){info('Envio NÃO concluído: '+e.message+' Atualize a consulta antes de tentar novamente.');}
 }
+window.addEventListener('arbitbet:local-change',scheduleAutoWrite);
 function start(){
  if(!window.arbitbetCloudBridge)return;
  modal();
