@@ -17,7 +17,28 @@ const button = (text, fn) => { const b = document.createElement('button'); b.typ
 let remote=null, email='';
 let autoTimer=null;
 let lastAutoNotice='';
-const sameState=(a,b)=>valid(a)&&valid(b)&&['casas','entradas','movimentacoes'].every(k=>JSON.stringify(a[k])===JSON.stringify(b[k]));
+// Compara por ID e chaves ordenadas, ignorando apenas ordem de arrays e propriedades.
+function canonical(value){
+ if(Array.isArray(value))return value.map(canonical);
+ if(value && typeof value==='object')return Object.fromEntries(Object.keys(value).sort().filter(k=>value[k]!==undefined).map(k=>[k,canonical(value[k])]));
+ return value;
+}
+const stable=value=>JSON.stringify(canonical(value));
+function differences(a,b){
+ if(!valid(a)||!valid(b))throw Error('Dados inválidos para comparação.');
+ const result={};
+ for(const field of ['casas','entradas','movimentacoes']){
+  const index=items=>{const m=new Map();for(const item of items){if(!item?.id||m.has(String(item.id)))throw Error('ID ausente ou repetido em '+field);m.set(String(item.id),item);}return m;};
+  const local=index(a[field]),cloud=index(b[field]);
+  result[field]={apenasLocal:[...local.keys()].filter(id=>!cloud.has(id)),apenasNuvem:[...cloud.keys()].filter(id=>!local.has(id)),divergentes:[...local.keys()].filter(id=>cloud.has(id)&&stable(local.get(id))!==stable(cloud.get(id)))};
+ }
+ return result;
+}
+const sameState=(a,b)=>Object.values(differences(a,b)).every(x=>!x.apenasLocal.length&&!x.apenasNuvem.length&&!x.divergentes.length);
+function diagnosticText(d){
+ const names={casas:'Casas',entradas:'Apostas',movimentacoes:'Movimentações'};
+ return Object.entries(d).map(([k,v])=>names[k]+': '+v.apenasLocal.length+' só no navegador, '+v.apenasNuvem.length+' só na nuvem, '+v.divergentes.length+' com conteúdo diferente').join(' | ');
+}
 function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}}
 async function autoCheck(){
  if(!document.hidden && email){
@@ -35,7 +56,7 @@ async function autoCheck(){
     info('Dados restaurados automaticamente neste navegador vazio. Nenhuma gravação na nuvem.');
    }else if(!sameState(local,data)&&lastAutoNotice!==String(data.revisao)){
     lastAutoNotice=String(data.revisao);
-    info('A nuvem possui dados diferentes (revisão '+data.revisao+'). Nenhum registro local foi substituído. Use Mesclar sem excluir após conferir.');
+    info('Diferenças detectadas (revisão '+data.revisao+'). '+diagnosticText(differences(local,data))+'. Nada foi alterado.');
    }else if(previous!==data.revisao&&sameState(local,data)){
     info('Dados locais e nuvem conferidos automaticamente (revisão '+data.revisao+').');
    }
@@ -69,6 +90,7 @@ function modal(){
  const restore=button('Restaurar da nuvem', restoreCloud);restore.id='cloudDownload';actions.append(restore);
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
+ actions.append(button('Diagnosticar diferenças (somente leitura)',diagnose));
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
  setActions(false);
@@ -91,6 +113,17 @@ async function restoreCloud(){
  catch(e){info('Falha ao restaurar: '+e.message);}
 }
 
+async function diagnose(){
+ try{
+  info('Comparando dados locais e nuvem, sem gravar...');
+  const data=await consultarNuvem();
+  if(!data.existe)throw Error('Não há dados na nuvem.');
+  remote=data;
+  $('cloudRemote').textContent=resumo(data)+' · Revisão '+data.revisao;
+  const diff=differences(window.arbitbetCloudBridge.get(),data);
+  info('Diagnóstico (somente leitura): '+diagnosticText(diff)+'. Nenhum dado foi alterado.');
+ }catch(e){info('Diagnóstico interrompido: '+e.message);}
+}
 async function prepararBets365(){
  try{
   info('Conferindo pacote validado...');
