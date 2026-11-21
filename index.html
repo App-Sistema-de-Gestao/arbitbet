@@ -208,36 +208,14 @@
     <div id="drawerBackdrop" class="fixed inset-0 bg-black/70 z-40 hidden"></div>
     <aside id="drawer" class="fixed inset-y-0 left-0 z-50 w-72 bg-darkbg border-r border-emerald-500/40 p-5 shadow-2xl transition-transform duration-200 -translate-x-full overflow-y-auto">
       <div class="flex justify-between items-center mb-6"><strong class="text-neonGreen text-lg">☰ ARBITBET</strong><button id="closeDrawer" aria-label="Fechar menu" class="text-white text-xl">✕</button></div>
-      <nav class="flex flex-col gap-3 text-sm"><a class="drawer-link" href="#sec-resumo">📊 Visão geral</a><a class="drawer-link" href="#sec-grafico">📈 Gráficos de P&L</a><a class="drawer-link" href="#sec-calendario">📅 Calendário</a><a class="drawer-link" href="#sec-casas">🏦 Casas e contas</a><a class="drawer-link" href="#sec-entradas">⚡ Entradas e arbitragens</a><a class="drawer-link" href="#sec-financas">💳 Depósitos e saques</a></nav>
+      <nav class="flex flex-col gap-3 text-sm"><div class=" text-[10px] uppercase text-slate-500 px-3 mt-3">VISÃO GERAL</div><a data-nav="sec-resumo" href="#sec-resumo" title="Painel Geral" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-chart-line w-4"></i><span class="">Painel Geral</span></a><a data-nav="sec-grafico" href="#sec-grafico" title="Evolução do Patrimônio e Lucro" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-chart-area w-4"></i><span class="">Evolução do Patrimônio e Lucro</span></a><a data-nav="sec-calendario" href="#sec-calendario" title="Calendário Diário" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-calendar-days w-4"></i><span class="">Calendário Diário</span></a><div class=" text-[10px] uppercase text-slate-500 px-3 mt-3">REGISTROS</div><a data-nav="sec-entradas" href="#sec-entradas" title="Registro de Entradas Avulsas" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-list-ul w-4"></i><span class="">Registro de Entradas Avulsas</span></a><a data-nav="sec-arbitragens" href="#sec-arbitragens" title="Registro de Arbitragens" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-arrow-right-arrow-left w-4"></i><span class="">Registro de Arbitragens</span></a><div class=" text-[10px] uppercase text-slate-500 px-3 mt-3">FINANCEIRO</div><a data-nav="sec-casas" href="#sec-casas" title="Casas de Apostas e Contas" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-wallet w-4"></i><span class="">Casas de Apostas e Contas</span></a><a data-nav="sec-financas" href="#sec-financas" title="Depósitos e Saques" class="drawer-link text-slate-300 text-sm"><i class="fa-solid fa-money-bill-transfer w-4"></i><span class="">Depósitos e Saques</span></a></nav>
       <div class="mt-7 border-t border-darkborder pt-5 space-y-3 text-xs text-slate-300"><p><strong>Sobre:</strong> Arbitbet — controle pessoal de apostas e arbitragem.</p><p><strong>Resultados:</strong> pendente, GREEN, RED, REEMBOLSO e CASHOUT.</p><p><strong>Dados:</strong> armazenados neste navegador. Faça backups frequentes.</p><p><strong>Segurança:</strong> senha local não substitui login seguro em servidor.</p></div>
     </aside>
     <!-- Layout Principal -->
     <div class="flex-1 flex flex-col md:flex-row">
         <!-- Menu Lateral (PC) -->
         <aside id="desktopSidebar" aria-label="Navegação principal" class="hidden md:flex w-16 bg-darkbg border-r border-darkborder flex-col justify-between p-2 shrink-0 transition-[width,padding] duration-200">
-            <nav class="space-y-1.5">
-                <div class="sidebar-label hidden text-[11px] font-semibold uppercase tracking-wider text-slate-500 px-3 mb-2">Operação</div>
-                <a href="#sec-resumo" title="Visão Geral" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/10 text-neonGreen border border-emerald-400/35 text-sm font-medium">
-                    <i class="fa-solid fa-chart-line w-4 text-center"></i>
-                    <span class="sidebar-label hidden whitespace-nowrap">Visão Geral</span>
-                </a>
-                <a href="#sec-grafico" title="Evolução P&L" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
-                    <i class="fa-solid fa-wave-square w-4 text-center"></i>
-                    <span class="sidebar-label hidden whitespace-nowrap">Evolução P&L</span>
-                </a>
-                <a href="#sec-calendario" title="Calendário Diário" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
-                    <i class="fa-solid fa-calendar-days w-4 text-center"></i>
-                    <span class="sidebar-label hidden whitespace-nowrap">Calendário Diário</span>
-                </a>
-                <a href="#sec-casas" title="Casas & Contas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
-                    <i class="fa-solid fa-wallet w-4 text-center"></i>
-                    <span class="sidebar-label hidden whitespace-nowrap">Casas & Contas</span>
-                </a>
-                <a href="#sec-entradas" title="Entradas & Arb" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-darkcard text-sm font-medium transition">
-                    <i class="fa-solid fa-bolt w-4 text-center"></i>
-                    <span class="sidebar-label hidden whitespace-nowrap">Entradas & Arb</span>
-                </a>
-            </nav>
+            <nav class="space-y-1.5"><div class="sidebar-label hidden text-[10px] uppercase text-slate-500 px-3 mt-3">VISÃO GERAL</div><a data-nav="sec-resumo" href="#sec-resumo" title="Painel Geral" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-chart-line w-4"></i><span class="sidebar-label hidden">Painel Geral</span></a><a data-nav="sec-grafico" href="#sec-grafico" title="Evolução do Patrimônio e Lucro" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-chart-area w-4"></i><span class="sidebar-label hidden">Evolução do Patrimônio e Lucro</span></a><a data-nav="sec-calendario" href="#sec-calendario" title="Calendário Diário" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-calendar-days w-4"></i><span class="sidebar-label hidden">Calendário Diário</span></a><div class="sidebar-label hidden text-[10px] uppercase text-slate-500 px-3 mt-3">REGISTROS</div><a data-nav="sec-entradas" href="#sec-entradas" title="Registro de Entradas Avulsas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-list-ul w-4"></i><span class="sidebar-label hidden">Registro de Entradas Avulsas</span></a><a data-nav="sec-arbitragens" href="#sec-arbitragens" title="Registro de Arbitragens" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-arrow-right-arrow-left w-4"></i><span class="sidebar-label hidden">Registro de Arbitragens</span></a><div class="sidebar-label hidden text-[10px] uppercase text-slate-500 px-3 mt-3">FINANCEIRO</div><a data-nav="sec-casas" href="#sec-casas" title="Casas de Apostas e Contas" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-wallet w-4"></i><span class="sidebar-label hidden">Casas de Apostas e Contas</span></a><a data-nav="sec-financas" href="#sec-financas" title="Depósitos e Saques" class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-darkcard text-slate-300 text-sm"><i class="fa-solid fa-money-bill-transfer w-4"></i><span class="sidebar-label hidden">Depósitos e Saques</span></a></nav>
 
             <div class="sidebar-label hidden p-3.5 rounded-xl bg-voidbg border border-emerald-500/25 space-y-2">
                 <div class="flex items-center justify-between text-xs">
@@ -372,7 +350,7 @@
             </div>
 
             <!-- 4. Casas de Apostas / Contas -->
-            <section class="neon-card rounded-2xl p-4 sm:p-5"><h2 class="font-bold text-white mb-3">Controle de depósitos e saques</h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm"><div>Depósitos<div id="totalDepositos" class="mono text-neonGreen font-bold"></div></div><div>Saques<div id="totalSaques" class="mono text-white font-bold"></div></div><div>Saldo disponível<div id="totalDisponivel" class="mono text-white font-bold"></div></div><div>Valores em aberto<div id="totalReservado" class="mono text-amber-300 font-bold"></div></div></div><div id="historicoMov" class="text-xs text-slate-400 mt-4"></div></section><section id="sec-casas" class="neon-card rounded-2xl p-4 sm:p-5">
+            <section id="sec-financas" class="neon-card rounded-2xl p-4 sm:p-5"><h2 class="font-bold text-white mb-3">Controle de depósitos e saques</h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm"><div>Depósitos<div id="totalDepositos" class="mono text-neonGreen font-bold"></div></div><div>Saques<div id="totalSaques" class="mono text-white font-bold"></div></div><div>Saldo disponível<div id="totalDisponivel" class="mono text-white font-bold"></div></div><div>Valores em aberto<div id="totalReservado" class="mono text-amber-300 font-bold"></div></div></div><div id="historicoMov" class="text-xs text-slate-400 mt-4"></div></section><section id="sec-casas" class="neon-card rounded-2xl p-4 sm:p-5">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
                         <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
@@ -390,13 +368,15 @@
                 <div id="listaCasas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
             </section>
 
+            <!-- 5. Registros de entradas avulsas e arbitragem -->
+            <section id="sec-arbitragens" class="neon-card rounded-2xl p-4 sm:p-5 hidden"><h2 class="font-bold text-white mb-3"><i class="fa-solid fa-arrow-right-arrow-left text-neonGreen"></i> Registro de Arbitragens</h2><p class="text-xs text-slate-400 mb-3">Operações identificadas expressamente como arbitragem. Registros antigos sem classificação não são transferidos automaticamente.</p><div id="arbitragemResumo" class="text-sm text-amber-300 mb-3"></div><div id="listaArbitragens" class="space-y-2"></div><div id="paginacaoArbitragens" class="flex gap-2 items-center flex-wrap mt-4"></div></section>
             <!-- 5. Tabela de Entradas Recentes -->
             <section id="sec-entradas" class="neon-card rounded-2xl p-4 sm:p-5">
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div>
                         <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-list-ul text-neonGreen"></i>
-                            Registro de Entradas & Arbitragens
+                            Registro de Entradas Avulsas
                         </h2>
                         <p class="text-xs text-slate-400">Destaques automáticos em verde para GREEN e vermelho para RED</p>
                     </div>
@@ -406,14 +386,14 @@
                             <option value="TODAS">Todas as casas</option>
                         </select>
                         <select id="filtroResultado" class="bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-neonGreen">
-                            <option value="TODOS">Todos (GREEN / RED)</option>
-                            <option value="GREEN">Apenas GREEN</option>
-                            <option value="RED">Apenas RED</option><option value="PENDENTE">Pendentes</option><option value="ANULADA">Reembolsos</option><option value="REEMBOLSO">Reembolsos (novo)</option><option value="CASHOUT">Cashouts</option>
+                            <option value="TODOS">Todos</option>
+                            <option value="GREEN">GREEN</option>
+                            <option value="RED">RED</option><option value="PENDENTE">Pendentes</option><option value="REEMBOLSO">Reembolso</option><option value="CASHOUT">Cashouts</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto rounded-xl border border-darkborder">
+                <p id="avisoLegado" class="text-xs text-amber-300 mb-3"></p><div class="overflow-x-auto rounded-xl border border-darkborder">
                     <table class="w-full text-left border-collapse min-w-[740px]">
                         <thead>
                             <tr class="bg-voidbg text-[11px] uppercase tracking-wider text-slate-400 border-b border-darkborder">
@@ -429,7 +409,7 @@
                         </thead>
                         <tbody id="corpoTabelaEntradas" class="divide-y divide-darkborder/60 text-xs sm:text-sm mono"></tbody>
                     </table>
-                </div>
+                </div><div id="paginacaoAvulsas" class="flex gap-2 items-center flex-wrap mt-4"></div>
             </section>
         </main>
     </div>
@@ -449,7 +429,7 @@
                 </button>
             </div>
 
-            <form id="formEntrada" class="space-y-3.5"><input type="hidden" id="entradaEditId">
+            <form id="formEntrada" class="space-y-3.5"><input type="hidden" id="entradaEditId"><label class="block text-xs text-slate-400">Classificação da operação<select id="entradaCategoria" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white"><option value="AVULSA">Entrada avulsa</option><option value="ARBITRAGEM">Arbitragem</option><option value="NAO_CLASSIFICADA">Não classificada (histórico)</option></select></label>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Data</label>
@@ -683,6 +663,7 @@
                 renderizarCalendario();
                 renderizarGrafico();
                 renderizarMovimentacoes();
+                renderizarArbitragens();
             }
 
             function renderizarCards() {
@@ -809,6 +790,40 @@
                 });
             }
 
+ 
+            const paginas={avulsas:1,arbitragens:1};
+            function montarPaginacao(id,total,tipo){
+                const el=document.getElementById(id),max=Math.max(1,Math.ceil(total/10));
+                paginas[tipo]=Math.min(paginas[tipo],max);
+                el.replaceChildren();
+                const info=document.createElement('span');info.className='text-xs text-slate-400 mr-2';info.textContent=total?('Exibindo '+((paginas[tipo]-1)*10+1)+'–'+Math.min(total,paginas[tipo]*10)+' de '+total):'Nenhum registro';el.append(info);
+                if(max<=1)return;
+                const botao=(txt,n,disabled=false)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.disabled=disabled;b.className='px-3 py-1 rounded-lg border border-emerald-500/40 text-xs text-white disabled:opacity-30';b.onclick=()=>{paginas[tipo]=n;tipo==='avulsas'?renderizarTabelaEntradas():renderizarArbitragens();};el.append(b)};
+                botao('Anterior',paginas[tipo]-1,paginas[tipo]===1);
+                for(let n=1;n<=max;n++)botao(String(n),n,n===paginas[tipo]);
+                botao('Próxima',paginas[tipo]+1,paginas[tipo]===max);
+            }
+            function renderizarArbitragens(){
+                const lista=estado.entradas.filter(e=>e.categoria==='ARBITRAGEM').sort((a,b)=>b.data.localeCompare(a.data));
+                const el=document.getElementById('listaArbitragens');el.replaceChildren();
+                document.getElementById('arbitragemResumo').textContent=lista.length?lista.length+' registro(s) identificado(s) como arbitragem.':'Nenhuma arbitragem cadastrada até o momento.';
+                montarPaginacao('paginacaoArbitragens',lista.length,'arbitragens');
+                lista.slice((paginas.arbitragens-1)*10,paginas.arbitragens*10).forEach(e=>{
+                    const d=document.createElement('div');d.className='p-3 rounded-xl bg-voidbg border border-darkborder text-sm';
+                    const casa=obterCasaPorId(e.casaId);
+                    d.textContent=e.data+' · '+casa.nome+' ('+casa.conta+') · '+e.mercado+' · '+formatBRL(e.stake)+' · '+e.resultado+' · P&L '+formatPnlBRL(calcularPnlEntrada(e));
+                    el.append(d);
+                });
+            }
+            function navegarSecao(id){
+                const sec=['sec-resumo','sec-grafico','sec-calendario','sec-casas','sec-entradas','sec-arbitragens','sec-financas'];
+                const alvo=sec.includes(id)?id:'sec-resumo';
+                sec.forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===alvo?'':'none'});
+                document.querySelectorAll('[data-nav]').forEach(a=>{const active=a.dataset.nav===alvo;a.classList.toggle('text-neonGreen',active);a.classList.toggle('bg-emerald-500/10',active)});
+                if(alvo==='sec-grafico')requestAnimationFrame(renderizarGrafico);
+                window.scrollTo({top:0,behavior:'instant'});
+            }
+
             function renderizarTabelaEntradas() {
                 const corpo = document.getElementById('corpoTabelaEntradas');
                 const casaFiltro = document.getElementById('filtroCasa').value;
@@ -816,9 +831,15 @@
 
                 const ordenadas = [...estado.entradas]
                     .filter((e) => (casaFiltro === 'TODAS' ? true : e.casaId === casaFiltro))
-                    .filter((e) => (resFiltro === 'TODOS' ? true : e.resultado === resFiltro))
+                    .filter((e) => (resFiltro === 'TODOS' ? true : resFiltro === 'REEMBOLSO' ? ['REEMBOLSO','ANULADA'].includes(e.resultado) : e.resultado === resFiltro))
+                     .filter(e=>e.categoria!=='ARBITRAGEM')
                     .sort((a, b) => (a.data < b.data ? 1 : -1));
 
+                document.getElementById('avisoLegado').textContent=ordenadas.some(e=>!e.categoria||e.categoria==='NAO_CLASSIFICADA')?'Atenção: registros históricos sem categoria confirmada são exibidos aqui para conferência, sem alterar os dados. Use Editar para classificá-los.':'';
+                const pagina=paginas.avulsas;
+                paginas.avulsas=Math.min(pagina,Math.max(1,Math.ceil(ordenadas.length/10)));
+                const visiveis=ordenadas.slice((paginas.avulsas-1)*10,paginas.avulsas*10);
+                montarPaginacao('paginacaoAvulsas',ordenadas.length,'avulsas');
                 corpo.innerHTML = '';
 
                 if (ordenadas.length === 0) {
@@ -832,7 +853,7 @@
                     return;
                 }
 
-                ordenadas.forEach((item) => {
+                visiveis.forEach((item) => {
                     const casa = obterCasaPorId(item.casaId);
                     const pnl = calcularPnlEntrada(item);
                     const isGreen = item.resultado === 'GREEN';
@@ -871,7 +892,7 @@
                 });
 
                 document.querySelectorAll('.btn-finalizar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.final);if(!e)return;document.getElementById('liquidarId').value=e.id;document.getElementById('liquidarDescricao').textContent=e.mercado+' — '+obterCasaPorId(e.casaId).nome+' — Stake '+formatBRL(e.stake);document.getElementById('liquidarResultado').value='GREEN';document.getElementById('liquidarRetorno').value='';atualizarLiquidacao();abrirModal('modalLiquidar');}));
-                document.querySelectorAll('.btn-editar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.edit);if(!e)return;document.getElementById('entradaEditId').value=e.id;document.getElementById('entradaData').value=e.data;document.getElementById('entradaCasa').value=e.casaId;document.getElementById('entradaMercado').value=e.mercado;document.getElementById('entradaOdd').value=e.odd;document.getElementById('entradaStake').value=e.stake;document.getElementById('entradaResultado').value=e.resultado;document.getElementById('entradaRetorno').value=e.retornoRecebido??'';atualizarCamposResultadoEntrada();document.getElementById('tituloEntrada').textContent='Editar Entrada';atualizarPreviewEntrada();abrirModal('modalEntrada');}));
+                document.querySelectorAll('.btn-editar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.edit);if(!e)return;document.getElementById('entradaEditId').value=e.id;document.getElementById('entradaCategoria').value=e.categoria||'NAO_CLASSIFICADA';document.getElementById('entradaData').value=e.data;document.getElementById('entradaCasa').value=e.casaId;document.getElementById('entradaMercado').value=e.mercado;document.getElementById('entradaOdd').value=e.odd;document.getElementById('entradaStake').value=e.stake;document.getElementById('entradaResultado').value=e.resultado;document.getElementById('entradaRetorno').value=e.retornoRecebido??'';atualizarCamposResultadoEntrada();document.getElementById('tituloEntrada').textContent='Editar Entrada';atualizarPreviewEntrada();abrirModal('modalEntrada');}));
                 document.querySelectorAll('.btn-excluir-entrada').forEach((btn) => {
                     btn.addEventListener('click', () => {
                         const id = btn.getAttribute('data-del');
@@ -1162,8 +1183,8 @@
             });
 
             // Filtros da Tabela
-            document.getElementById('filtroCasa').addEventListener('change', renderizarTabelaEntradas);
-            document.getElementById('filtroResultado').addEventListener('change', renderizarTabelaEntradas);
+            document.getElementById('filtroCasa').addEventListener('change',()=>{paginas.avulsas=1;renderizarTabelaEntradas()});
+            document.getElementById('filtroResultado').addEventListener('change',()=>{paginas.avulsas=1;renderizarTabelaEntradas()});
 
             // Modais Entrada
             document.getElementById('btnAbrirEntrada').addEventListener('click', () => {
@@ -1171,7 +1192,7 @@
                 document.getElementById('entradaMercado').value = '';
                 document.getElementById('entradaOdd').value = '1.95';
                 document.getElementById('entradaStake').value = '150.00';
-                document.getElementById('entradaEditId').value = '';
+                document.getElementById('entradaEditId').value = '';document.getElementById('entradaCategoria').value='AVULSA';
                 document.getElementById('tituloEntrada').textContent='Registrar Nova Entrada';
                 atualizarPreviewEntrada();
                 abrirModal('modalEntrada');
@@ -1199,7 +1220,7 @@
                 const precisaReservarSaldo=resultadoEscolhido==='PENDENTE' && (!anterior || anterior.resultado!=='PENDENTE' || anterior.casaId!==casaEscolhida || stakeEscolhida>Number(anterior.stake));
                 if(!Number.isFinite(stakeEscolhida)||stakeEscolhida<=0){alert('Informe um valor apostado válido.');return;}
                 if(precisaReservarSaldo && stakeEscolhida>disponivelCasa(casaEscolhida)+creditoAnterior){alert('Saldo disponível insuficiente nesta casa.');return;}
-                const nova={id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:resultadoEscolhido,retornoRecebido:retornoEscolhido,finalizadaEm:resultadoEscolhido==='PENDENTE'?undefined:(anterior?.finalizadaEm||new Date().toISOString())};
+                const nova={categoria:document.getElementById('entradaCategoria').value,id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:resultadoEscolhido,retornoRecebido:retornoEscolhido,finalizadaEm:resultadoEscolhido==='PENDENTE'?undefined:(anterior?.finalizadaEm||new Date().toISOString())};
                 if(anterior)Object.assign(anterior,nova);else estado.entradas.push(nova);
                 salvarEstado();
                 renderizarTudo();
@@ -1319,7 +1340,7 @@
                 menuToggle.setAttribute('aria-label',open?'Recolher menu lateral':'Expandir menu lateral');
                 menuToggle.title=open?'Recolher menu':'Expandir menu';
             }
-            menuToggle.onclick=()=>{if(window.matchMedia('(min-width: 768px)').matches)setSidebarExpanded(!sidebarExpanded);else toggleDrawer(true)};document.getElementById('closeDrawer').onclick=()=>toggleDrawer(false);backdrop.onclick=()=>toggleDrawer(false);document.querySelectorAll('.drawer-link').forEach(a=>a.onclick=()=>toggleDrawer(false));
+            menuToggle.onclick=()=>{if(window.matchMedia('(min-width: 768px)').matches)setSidebarExpanded(!sidebarExpanded);else toggleDrawer(true)};document.getElementById('closeDrawer').onclick=()=>toggleDrawer(false);backdrop.onclick=()=>toggleDrawer(false);document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',ev=>{ev.preventDefault();navegarSecao(a.dataset.nav);toggleDrawer(false)}));navegarSecao('sec-resumo');
             function atualizarLiquidacao(){const r=document.getElementById('liquidarResultado').value;const e=estado.entradas.find(x=>x.id===document.getElementById('liquidarId').value);if(!e)return;document.getElementById('liquidarRetornoWrap').classList.toggle('hidden',r!=='CASHOUT');const pnl=r==='GREEN'?e.stake*(e.odd-1):r==='RED'?-e.stake:r==='CASHOUT'?Number(document.getElementById('liquidarRetorno').value||0)-e.stake:0;document.getElementById('liquidarPreview').textContent='Resultado líquido: '+formatPnlBRL(pnl);}
             document.getElementById('liquidarResultado').onchange=atualizarLiquidacao;document.getElementById('liquidarRetorno').oninput=atualizarLiquidacao;
             document.getElementById('fecharLiquidar').onclick=()=>fecharModal('modalLiquidar');
