@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -259,6 +259,23 @@ function modal(){
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
  actions.append(button('Laboratório — criar evento offline (fila fictícia)',()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||list.length>=20)throw Error('Fila inválida ou cheia');const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';list.push({id:'offline-'+crypto.randomUUID(),origem,data:new Date().toISOString()});localStorage.setItem(key,JSON.stringify(list));info('Evento fictício salvo SOMENTE neste aparelho. Fila offline: '+list.length+'. Nenhum dado enviado ao Firebase.');}catch(e){info('Falha ao criar evento offline: '+e.message);}}));
  actions.append(button('Laboratório — enviar fila offline (isolado)',async()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||!list.length)return info('Fila offline vazia neste aparelho.');if(!confirm('Enviar '+list.length+' eventos fictícios da fila offline ao laboratório? NÃO altera apostas reais.'))return;const s=await enviarEventosLaboratorio(list);localStorage.removeItem(key);info('Fila fictícia conciliada: revisão '+s.revisao+' · '+s.eventos.length+' eventos no laboratório. Fila local limpa.');}catch(e){info('Fila offline PRESERVADA: '+e.message);}}));
+ actions.append(button('Homologação financeira — iniciar ambiente isolado',async()=>{
+  if(!confirm('Inicializar o ambiente de HOMOLOGAÇÃO com uma casa fictícia, sem alterar as 38 apostas reais?'))return;
+  try{const s=await homologarFinanceiroIsolado('iniciar');info('HOMOLOGAÇÃO ISOLADA INICIADA · '+s.estado.casas.length+' casa fictícia · '+s.estado.entradas.length+' apostas fictícias · revisão do laboratório '+s.revisao+'. Nenhum dado real alterado.');}
+  catch(e){info('Homologação não iniciada: '+e.message);}
+ }));
+ actions.append(button('Homologação financeira — adicionar aposta fictícia',async()=>{
+  if(!confirm('Adicionar aposta fictícia de R$ 1,00 SOMENTE à homologação isolada?'))return;
+  try{
+   const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';
+   const s=await homologarFinanceiroIsolado('adicionar',origem);
+   info('HOMOLOGAÇÃO GRAVADA · '+s.estado.entradas.length+' apostas fictícias · última origem: '+origem+' · revisão do laboratório '+s.revisao+'. Nenhum dado real alterado.');
+  }catch(e){info('Homologação bloqueada: '+e.message+'. Nenhum dado real alterado.');}
+ }));
+ actions.append(button('Homologação financeira — conferir no Firebase (somente leitura)',async()=>{
+  try{const s=await homologarFinanceiroIsolado('consultar');const e=s.estado?.entradas||[];info('HOMOLOGAÇÃO CONSULTADA · '+e.length+' apostas fictícias · última origem: '+(e.at(-1)?.origem||'nenhuma')+' · revisão do laboratório '+s.revisao+'. Nenhum dado real alterado.');}
+  catch(e){info('Consulta de homologação indisponível: '+e.message);}
+ }));
  actions.append(button('Auditoria final da sincronização financeira (somente leitura)',async()=>{
   try{
    if(!email)throw Error('Entre no Firebase.');
@@ -312,7 +329,7 @@ function modal(){
  for(const el of [...actions.children]){
   if(el===advanced)continue;
   const t=el.textContent||'';
-  if(/Laboratório|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
  }
  setActions(false);
 }
