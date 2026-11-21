@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -15,6 +15,8 @@ const counts = s => s ? `${s.casas?.length ?? 0} casas · ${s.entradas?.length ?
 const valid = s => s && Array.isArray(s.casas) && Array.isArray(s.entradas) && Array.isArray(s.movimentacoes);
 const button = (text, fn) => { const b = document.createElement('button'); b.type='button'; b.textContent=text; b.className='rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-white bg-slate-800'; b.onclick=fn; return b; };
 let remote=null, email='';
+let authEpoch=0;
+let currentUid=null;
 let autoTimer=null;
 let lastAutoNotice='';
 let autoUploadEnabled=false;
@@ -24,9 +26,11 @@ let autoError='';
 let syncBaseline=null;
 let syncRevision=0;
 let syncBusy=false;
+let syncRunToken=0;
 let syncTimer=null;
 let labTimer=null,labLastRevision=null,labPolling=false;
-function stopLabWatch(){if(labTimer)clearInterval(labTimer);labTimer=null;labLastRevision=null;}
+let labFinanceCount=null;
+function stopLabWatch(){if(labTimer)clearInterval(labTimer);labTimer=null;labLastRevision=null;labFinanceCount=null;}
 async function checkLabWatch(){
  if(!email||document.hidden||labPolling)return;
  labPolling=true;
@@ -37,6 +41,16 @@ async function checkLabWatch(){
   if(!s.existe){el.textContent='Laboratório ainda não criado.';return;}
   if(labLastRevision!==null && s.revisao>labLastRevision)el.textContent='ATUALIZAÇÃO AUTOMÁTICA RECEBIDA: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios · última origem: '+(s.eventos.at(-1)?.origem||'nenhuma');
   else if(labLastRevision===null)el.textContent='Monitor automático ativo · revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios.';
+  const financial=s.financeiroFicticio||[];
+  const f=$('labFinanceWatchStatus');
+  if(f){
+   if(!Array.isArray(financial)){f.textContent='Laboratório financeiro: dados fictícios inválidos.';}
+   else if(labFinanceCount!==null && financial.length>labFinanceCount){
+    const ultimo=financial.at(-1);
+    f.textContent='FINANCEIRO FICTÍCIO RECEBIDO AUTOMATICAMENTE · '+financial.length+' registros · última origem: '+(ultimo?.origem||'desconhecida')+' · revisão '+s.revisao+'. Nenhuma aposta real alterada.';
+   }else if(labFinanceCount===null){f.textContent='Monitor financeiro fictício ativo · '+financial.length+' registros · revisão '+s.revisao+'.';}
+   labFinanceCount=financial.length;
+  }
   labLastRevision=s.revisao;
  }catch(e){const el=$('labWatchStatus');if(el)el.textContent='Monitor do laboratório: '+e.message;}
  finally{labPolling=false;}
@@ -53,16 +67,19 @@ function pauseSync(message){
  info('Sincronização pausada por segurança: '+message);
 }
 function stopSafeSync(){
+ syncRunToken++;
  if(syncTimer){clearInterval(syncTimer);syncTimer=null;}
  syncBaseline=null;syncRevision=0;
 }
 async function safeSync(){
  if(syncBusy||!email||!syncBaseline||autoUploadEnabled)return;
  syncBusy=true;
+ const token=syncRunToken,uid=currentUid;
  try{
   const local=window.arbitbetCloudBridge.get();
   if(!valid(local))throw Error('Estado local inválido.');
   const result=await sincronizarTresVias(syncBaseline,local,syncRevision);
+  if(token!==syncRunToken||uid!==currentUid)return;
   const latest=window.arbitbetCloudBridge.get();
   if(!sameState(local,latest)){
    // Alteração local durante a transação: nunca avançar a base sem conciliar.
@@ -73,7 +90,7 @@ async function safeSync(){
   setBaseline({...result.estado,revisao:result.revisao});
   $('cloudLocal').textContent=resumo(result.estado);
   $('cloudRemote').textContent=resumo(result.estado)+' · Revisão '+result.revisao;
- }catch(e){pauseSync(e.message);}
+ }catch(e){if(token===syncRunToken&&uid===currentUid)pauseSync(e.message);}
  finally{syncBusy=false;}
 }
 function startSafeSync(data){
@@ -110,49 +127,15 @@ function diagnosticText(d){
  const names={casas:'Casas',entradas:'Apostas',movimentacoes:'Movimentações'};
  return Object.entries(d).map(([k,v])=>names[k]+': '+v.apenasLocal.length+' só no navegador, '+v.apenasNuvem.length+' só na nuvem, '+v.divergentes.length+' com conteúdo diferente').join(' | ');
 }
-function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(autoWriteTimer){clearTimeout(autoWriteTimer);autoWriteTimer=null;}autoUploadEnabled=false;updateAutoButton();}
-function updateAutoButton(){const b=$('cloudAutoWrite');if(b)b.textContent=autoUploadEnabled?'Desativar envio automático (teste)':'Ativar envio automático (teste)';}
-function scheduleAutoWrite(){
- if(!autoUploadEnabled||!email)return;
- if(autoWriteTimer)clearTimeout(autoWriteTimer);
- autoWriteTimer=setTimeout(()=>{autoWriteTimer=null;void autoWrite();},1500);
-}
-async function autoWrite(){
- if(!autoUploadEnabled||!email||uploadBusy)return;
- uploadBusy=true;
- try{
-  const local=window.arbitbetCloudBridge.get();
-  if(!valid(local)||!local.casas.length)throw Error('Estado local vazio ou inválido.');
-  const result=await mesclarSemPerdas(local);
-  // Nunca substituir alterações locais posteriores ao início da operação.
-  const latest=window.arbitbetCloudBridge.get();
-  if(!sameState(local,latest)){info('Houve novas alterações durante o envio. Refaça a conferência.');autoUploadEnabled=false;updateAutoButton();return;}
-  window.arbitbetCloudBridge.replace(result.estado);
-  await refresh();
-  info(result.semAlteracoes?'Verificação automática: sem alterações.':'Novos registros enviados automaticamente com segurança (revisão '+result.revisao+').');
- }catch(e){
-  autoUploadEnabled=false;updateAutoButton();
-  info('Envio automático pausado por segurança: '+e.message+'. Nenhum registro local foi substituído.');
- }finally{uploadBusy=false;}
-}
-async function toggleAutoWrite(){
- stopSafeSync();
- if(autoUploadEnabled){autoUploadEnabled=false;updateAutoButton();info('Envio automático desativado.');return;}
- if(!email)return info('Entre no Firebase antes de ativar.');
- const local=window.arbitbetCloudBridge.get();
- const cloud=await consultarNuvem();
- if(!cloud.existe||!valid(cloud))return info('Nuvem vazia ou indisponível: ativação bloqueada.');
- const d=differences(local,cloud);
- if(Object.values(d).some(x=>x.divergentes.length))return info('Ativação bloqueada: existem registros divergentes. '+diagnosticText(d));
- if(!confirm('ATIVAR ENVIO AUTOMÁTICO NESTA ABA?\\n\\nNovos registros serão mesclados no Firebase após cada alteração. Edições conflitantes serão bloqueadas. Não será permitido apagar registros remotamente. O recurso ficará ativo apenas nesta sessão. Faça backup antes de prosseguir.'))return;
- downloadJson(local,'arbitbet-antes-envio-automatico');
- autoUploadEnabled=true;updateAutoButton();
- info('Envio automático ativado nesta aba. Alterações novas serão mescladas; conflitos bloqueiam o envio.');
-}
+function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(autoWriteTimer){clearTimeout(autoWriteTimer);autoWriteTimer=null;}autoUploadEnabled=false;}
+// O envio automático legado foi desativado: somente conciliação de três vias.
+function scheduleAutoWrite(){}
 async function autoCheck(){
+ const epoch=authEpoch,uid=currentUid;
  if(!document.hidden && email){
   try{
    const data=await consultarNuvem();
+   if(epoch!==authEpoch||uid!==currentUid)return;
    if(!data.existe||!valid(data))return;
    const previous=remote?.revisao;
    remote=data;
@@ -167,8 +150,12 @@ async function autoCheck(){
    }else if(!sameState(local,data)&&lastAutoNotice!==String(data.revisao)){
     lastAutoNotice=String(data.revisao);
     info('Diferenças detectadas (revisão '+data.revisao+'). '+diagnosticText(differences(local,data))+'. Nada foi alterado.');
-   }else if(previous!==data.revisao&&sameState(local,data)){
-    info('Dados locais e nuvem conferidos automaticamente (revisão '+data.revisao+').');
+   }else if(sameState(local,data)){
+    // Reiniciar após conciliação segura, mesmo quando o login começou divergente.
+    if(!syncBaseline && !syncBusy && !autoUploadEnabled)startSafeSync(data);
+    else if(previous!==data.revisao){
+     info('Dados locais e nuvem conferidos automaticamente (revisão '+data.revisao+').');
+    }
    }
   }catch(e){info('Consulta automática indisponível: '+e.message);}
  }
@@ -191,6 +178,7 @@ function modal(){
  <div class="border-t border-slate-700 pt-3 text-sm"><strong>Dados deste navegador:</strong><p id="cloudLocal" class="mt-1 text-slate-300"></p></div>
  <div class="text-sm"><strong>Dados da nuvem:</strong><p id="cloudRemote" class="mt-1 text-slate-300">Entre para consultar.</p></div>
  <p id="cloudInfo" role="status" class="text-xs text-sky-300"></p>\n <p id="labWatchStatus" role="status" class="text-xs text-emerald-300">Monitor do laboratório aguardando login.</p>
+ <p id="labFinanceWatchStatus" role="status" class="text-xs text-emerald-300">Monitor financeiro fictício aguardando login.</p>
  <div class="flex flex-wrap gap-2" id="cloudActions"></div></div>`;
  document.body.appendChild(box);
  $('cloudClose').onclick=()=>box.classList.add('hidden');
@@ -243,9 +231,79 @@ function modal(){
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
  actions.append(button('Laboratório — criar evento offline (fila fictícia)',()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||list.length>=20)throw Error('Fila inválida ou cheia');const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';list.push({id:'offline-'+crypto.randomUUID(),origem,data:new Date().toISOString()});localStorage.setItem(key,JSON.stringify(list));info('Evento fictício salvo SOMENTE neste aparelho. Fila offline: '+list.length+'. Nenhum dado enviado ao Firebase.');}catch(e){info('Falha ao criar evento offline: '+e.message);}}));
  actions.append(button('Laboratório — enviar fila offline (isolado)',async()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||!list.length)return info('Fila offline vazia neste aparelho.');if(!confirm('Enviar '+list.length+' eventos fictícios da fila offline ao laboratório? NÃO altera apostas reais.'))return;const s=await enviarEventosLaboratorio(list);localStorage.removeItem(key);info('Fila fictícia conciliada: revisão '+s.revisao+' · '+s.eventos.length+' eventos no laboratório. Fila local limpa.');}catch(e){info('Fila offline PRESERVADA: '+e.message);}}));
+ actions.append(button('Concorrência REAL — 1. Capturar base neste aparelho',async()=>{
+  try{const r=await capturarBaseConcorrenciaReal();info('BASE CAPTURADA NESTE APARELHO · '+r.quantidade+' apostas fictícias · revisão '+r.revisao+'. NÃO atualize a página antes de enviar. Nenhum dado real alterado.');}
+  catch(e){info('Captura bloqueada: '+e.message);}
+ }));
+ actions.append(button('Concorrência REAL — 2. Enviar aposta da base capturada',async()=>{
+  if(!confirm('Enviar uma aposta fictícia a partir da base capturada neste aparelho? Somente laboratório isolado.'))return;
+  try{
+   const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';
+   const r=await enviarConcorrenciaReal(origem);
+   info('CONCORRÊNCIA REAL GRAVADA · '+r.quantidade+' apostas fictícias preservadas · base capturada na revisão '+r.baseRevisao+' · revisão atual '+r.revisao+' · base desatualizada: '+(r.baseDesatualizada?'SIM':'NÃO')+'. Nenhum dado real alterado.');
+  }catch(e){info('Concorrência real BLOQUEADA: '+e.message+'. Nenhum dado real alterado.');}
+ }));
+ actions.append(button('Homologação — simular concorrência (somente laboratório)',async()=>{
+  if(!confirm('Simular duas apostas simultâneas e um conflito RED/GREEN em memória, gravando apenas o relatório no laboratório isolado?'))return;
+  try{
+   const r=await testarConcorrenciaHomologacao();
+   info('CONCORRÊNCIA SIMULADA APROVADA · 2 inclusões independentes preservadas · conflito RED/GREEN bloqueado · revisão do laboratório '+r.revisao+'. Apenas relatório de teste gravado; nenhum dado real alterado.');
+  }catch(e){info('CONCORRÊNCIA SIMULADA NÃO APROVADA: '+e.message+'. Nenhum dado real alterado.');}
+ }));
+ actions.append(button('Homologação financeira — iniciar ambiente isolado',async()=>{
+  if(!confirm('Inicializar o ambiente de HOMOLOGAÇÃO com uma casa fictícia, sem alterar as 38 apostas reais?'))return;
+  try{const s=await homologarFinanceiroIsolado('iniciar');info('HOMOLOGAÇÃO ISOLADA INICIADA · '+s.estado.casas.length+' casa fictícia · '+s.estado.entradas.length+' apostas fictícias · revisão do laboratório '+s.revisao+'. Nenhum dado real alterado.');}
+  catch(e){info('Homologação não iniciada: '+e.message);}
+ }));
+ actions.append(button('Homologação financeira — adicionar aposta fictícia',async()=>{
+  if(!confirm('Adicionar aposta fictícia de R$ 1,00 SOMENTE à homologação isolada?'))return;
+  try{
+   const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';
+   const s=await homologarFinanceiroIsolado('adicionar',origem);
+   info('HOMOLOGAÇÃO GRAVADA · '+s.estado.entradas.length+' apostas fictícias · última origem: '+origem+' · revisão do laboratório '+s.revisao+'. Nenhum dado real alterado.');
+  }catch(e){info('Homologação bloqueada: '+e.message+'. Nenhum dado real alterado.');}
+ }));
+ actions.append(button('Homologação financeira — conferir no Firebase (somente leitura)',async()=>{
+  try{const s=await homologarFinanceiroIsolado('consultar');const e=s.estado?.entradas||[];info('HOMOLOGAÇÃO CONSULTADA · '+e.length+' apostas fictícias · última origem: '+(e.at(-1)?.origem||'nenhuma')+' · revisão do laboratório '+s.revisao+'. Nenhum dado real alterado.');}
+  catch(e){info('Consulta de homologação indisponível: '+e.message);}
+ }));
+ actions.append(button('Auditoria final da sincronização financeira (somente leitura)',async()=>{
+  try{
+   if(!email)throw Error('Entre no Firebase.');
+   if(syncBusy)throw Error('Sincronização em andamento; aguarde e repita a auditoria.');
+   const localAntes=window.arbitbetCloudBridge.get();
+   if(!valid(localAntes))throw Error('Dados locais inválidos.');
+   const cloud=await consultarNuvem();
+   if(!cloud.existe||!valid(cloud))throw Error('Dados da nuvem indisponíveis.');
+   const localDepois=window.arbitbetCloudBridge.get();
+   if(!sameState(localAntes,localDepois))throw Error('Dados locais mudaram durante a auditoria; repita depois.');
+   const d=differences(localDepois,cloud);
+   const iguais=sameState(localDepois,cloud);
+   const baseAtiva=!!syncBaseline&&syncTimer!==null&&!autoUploadEnabled;
+   const baseIgual=baseAtiva&&sameState(syncBaseline,cloud);
+   const revisaoIgual=baseAtiva&&syncRevision===cloud.revisao;
+   const aprovado=iguais&&baseIgual&&revisaoIgual&&localDepois.entradas.length===38&&localDepois.casas.length===5&&localDepois.movimentacoes.length===12;
+   info((aprovado?'AUDITORIA FINANCEIRA APROVADA':'AUDITORIA FINANCEIRA REQUER CONFERÊNCIA')+' · navegador: '+resumo(localDepois)+' · nuvem: '+resumo(cloud)+' · revisão '+cloud.revisao+' · rotina ativa: '+(baseAtiva?'sim':'não')+' · base igual: '+(baseIgual?'sim':'não')+' · revisão da base igual: '+(revisaoIgual?'sim':'não')+' · '+diagnosticText(d)+'. Somente leitura; nenhum dado gravado.');
+  }catch(e){info('AUDITORIA INTERROMPIDA: '+e.message+'. Nenhum dado gravado.');}
+ }));
+ actions.append(button('Financeiro fictício — registrar neste aparelho (isolado)',async()=>{
+  if(!email)return info('Entre no Firebase primeiro.');
+  if(!confirm('Criar uma aposta FICTÍCIA de R$ 1,00 SOMENTE no laboratório separado? Não altera suas apostas ou saldos reais.'))return;
+  try{
+   const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';
+   const s=await testeFinanceiroIsolado('registrar',origem);
+   info('FINANCEIRO FICTÍCIO SALVO NO LABORATÓRIO · '+s.entradas.length+' registros · revisão '+s.revisao+'. Consulte no outro aparelho. Nenhuma aposta real alterada.');
+  }catch(e){info('Teste financeiro fictício interrompido: '+e.message+'. Nenhum dado real alterado.');}
+ }));
+ actions.append(button('Financeiro fictício — conferir no outro aparelho (isolado)',async()=>{
+  try{
+   const s=await testeFinanceiroIsolado('consultar');
+   const ultimo=s.entradas.at(-1);
+   info('FINANCEIRO FICTÍCIO ISOLADO · '+s.entradas.length+' registros · revisão '+s.revisao+(ultimo?' · último: '+ultimo.origem+' · '+ultimo.resultado+' · R$ '+ultimo.stake.toFixed(2):' · nenhum registro fictício')+'. Dados financeiros reais não consultados nem modificados.');
+  }catch(e){info('Consulta fictícia interrompida: '+e.message+'. Nenhum dado real alterado.');}
+ }));
  actions.append(button('Testar sincronização em memória (sem gravar)',()=>{const t=testarConciliacaoEmMemoria();info('Teste sem gravar: '+t.aprovados+'/'+t.total+' cenários aprovados. '+t.cenarios.filter(x=>!x.ok).map(x=>x.nome+': '+x.erro).join(' | '));}));
  actions.append(button('Conciliar 99play — 2 apostas + 1 RED (teste)',conciliar99playUI));
- const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
  actions.append(button('Preparar Bets365 — Neudson',prepararBets365));
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
  // Controles de laboratório e manutenção ficam recolhidos no uso diário.
@@ -261,18 +319,78 @@ function modal(){
  for(const el of [...actions.children]){
   if(el===advanced)continue;
   const t=el.textContent||'';
-  if(/Laboratório|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
  }
  setActions(false);
 }
 async function refresh(){
- try{info('Consultando...');const data=await consultarNuvem();remote=data.existe?data:null;
+ const epoch=authEpoch,uid=currentUid;
+ try{info('Consultando...');const data=await consultarNuvem();if(epoch!==authEpoch||uid!==currentUid)return;remote=data.existe?data:null;
  $('cloudRemote').textContent=remote?resumo(remote)+' · Revisão '+remote.revisao:'Sem registros na nuvem';
  $('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());
  setActions(true);if(!remote)$('cloudDownload').disabled=true;
  info('Consulta concluída. Nenhum dado foi modificado.');
  }catch(e){remote=null;setActions(false);info('Falha na consulta: '+e.message);}
 }
+
+// Recuperação estrita: somente os 3 registros novos e os 2 RED confirmados.
+// Não permite nenhuma outra diferença, nem alteração de casas ou movimentações.
+function verificarRecuperacao38(local,cloud){
+ const idsNovos=['e_1795296124225','e_1795296211277','e_1795296312501'];
+ const idsRed=['npt-3','nbr-5672688958'];
+ const d=differences(local,cloud);
+ const vazias=x=>!x.apenasLocal.length&&!x.apenasNuvem.length&&!x.divergentes.length;
+ if(local.casas.length!==5||cloud.casas.length!==5||local.entradas.length!==35||cloud.entradas.length!==38||
+    local.movimentacoes.length!==12||cloud.movimentacoes.length!==12||
+    !vazias(d.casas)||!vazias(d.movimentacoes)||
+    d.entradas.apenasLocal.length||d.entradas.apenasNuvem.length!==3||
+    d.entradas.divergentes.length!==2||
+    idsNovos.some(id=>!d.entradas.apenasNuvem.includes(id))||
+    idsRed.some(id=>!d.entradas.divergentes.includes(id)))throw Error('Diferenças fora do cenário validado. '+diagnosticText(d));
+ const l=new Map(local.entradas.map(x=>[x.id,x]));
+ const c=new Map(cloud.entradas.map(x=>[x.id,x]));
+ for(const id of idsRed){
+  const before=l.get(id),after=c.get(id);
+  if(before?.resultado!=='PENDENTE'||after?.resultado!=='RED')throw Error('Resultado inesperado: '+id);
+  const {resultado:a,finalizadaEm:b,...baseLocal}=before;
+  const {resultado:z,finalizadaEm:y,...baseCloud}=after;
+  if(stable(baseLocal)!==stable(baseCloud))throw Error('Outros campos alterados: '+id);
+ }
+ for(const id of idsNovos){
+  const x=c.get(id);
+  if(!x||x.resultado!=='RED'||x.casaId!=='nbr')throw Error('Nova entrada inesperada: '+id);
+ }
+ return d;
+}
+async function recuperar38ComSeguranca(){
+ if(!email)return info('Entre no Firebase antes da recuperação.');
+ if(syncBusy||autoUploadEnabled)return info('Sincronização ou envio em andamento. Aguarde.');
+ const local=window.arbitbetCloudBridge.get();
+ try{
+  const cloud=await consultarNuvem();
+  if(!cloud.existe||!valid(cloud))throw Error('Nuvem indisponível.');
+  verificarRecuperacao38(local,cloud);
+  if(!sameState(local,window.arbitbetCloudBridge.get()))throw Error('Dados locais mudaram durante a verificação.');
+  const msg='RECUPERAÇÃO CONTROLADA NO CELULAR?\\n\\nA nuvem contém 38 entradas e o aparelho 35.\\nSerão acrescentadas 3 entradas e atualizados 2 resultados PENDENTE para RED.\\nNenhuma alteração será enviada à nuvem.\\nDois backups JSON serão baixados antes da recuperação.\\n\\nConfirma?';
+  if(!confirm(msg))return info('Recuperação cancelada; nada alterado.');
+  // Nova leitura evita usar uma cópia remota desatualizada após a confirmação.
+  const atual=await consultarNuvem();
+  if(!atual.existe||atual.revisao!==cloud.revisao||!sameState(cloud,atual))throw Error('A nuvem mudou; recomece a conferência.');
+  if(!sameState(local,window.arbitbetCloudBridge.get()))throw Error('O aparelho mudou; recomece a conferência.');
+  verificarRecuperacao38(local,atual);
+  downloadJson(local,'arbitbet-recuperacao38-celular-antes');
+  downloadJson(atual,'arbitbet-recuperacao38-nuvem-antes');
+  stopSafeSync();
+  window.arbitbetCloudBridge.replace({casas:clone(atual.casas),entradas:clone(atual.entradas),movimentacoes:clone(atual.movimentacoes)});
+  const depois=window.arbitbetCloudBridge.get();
+  if(!sameState(depois,atual))throw Error('A verificação posterior falhou. Guarde os backups.');
+  remote=atual;
+  $('cloudLocal').textContent=resumo(depois);
+  startSafeSync(atual);
+  info('RECUPERAÇÃO VALIDADA: 5 casas, 38 entradas, 12 movimentações; revisão '+atual.revisao+'. Nuvem não modificada.');
+ }catch(e){info('RECUPERAÇÃO BLOQUEADA: '+e.message+' Não execute restauração manual.');}
+}
+
 async function restoreCloud(){
  stopSafeSync();
  if(!remote||!valid(remote))return info('Nenhum backup válido encontrado na nuvem.');
@@ -373,15 +491,31 @@ async function uploadCloud(){
  catch(e){info('Envio NÃO concluído: '+e.message+' Atualize a consulta antes de tentar novamente.');}
 }
 window.addEventListener('arbitbet:local-change',()=>{
- scheduleAutoWrite();
- if(syncBaseline && !autoUploadEnabled)void safeSync();
+ if(syncBaseline)void safeSync();
 });
 function start(){
  if(!window.arbitbetCloudBridge)return;
  modal();
  const btn=button('☁ Nuvem (teste)',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
- try{configurarFirebase(config);observarUsuario(user=>{email=user?.email||'';$('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);$('cloudUser').textContent=user?'Conectado: '+email:'';remote=null;setActions(false);$('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';if(user){void refresh().then(()=>{if(remote)startSafeSync(remote);});startAuto();startLabWatch();}else{stopAuto();stopSafeSync();stopLabWatch();lastAutoNotice='';}});}
+ try{configurarFirebase(config);observarUsuario(user=>{
+  const epoch=++authEpoch;
+  stopAuto();stopSafeSync();stopLabWatch();
+  currentUid=user?.uid||null;
+  email=user?.email||'';
+  remote=null;lastAutoNotice='';
+  $('cloudLogin').classList.toggle('hidden',!!user);
+  $('cloudLogged').classList.toggle('hidden',!user);
+  $('cloudUser').textContent=user?'Conectado: '+email:'';
+  setActions(false);
+  $('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';
+  if(user){
+   void refresh().then(()=>{
+    if(epoch===authEpoch&&currentUid===user.uid&&remote)startSafeSync(remote);
+   });
+   startAuto();startLabWatch();
+  }
+});}
  catch(e){info('Firebase indisponível: '+e.message);}
  $('cloudLogin').onsubmit=async e=>{e.preventDefault();try{info('Autenticando...');await entrar($('cloudEmail').value,$('cloudPassword').value);$('cloudPassword').value='';info('Login realizado.');}catch(err){info('Login não realizado: '+err.message);}};
  $('cloudLogout').onclick=async()=>{await sair();info('Saiu da nuvem. Os dados locais permanecem.');};

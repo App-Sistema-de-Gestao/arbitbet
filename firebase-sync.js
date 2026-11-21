@@ -202,9 +202,12 @@ export function conciliarTresVias(base,local,cloud){
 export async function sincronizarTresVias(base,local,revisaoBase){
  validarEstado(base);validarEstado(local);
  if(!Number.isInteger(revisaoBase)||revisaoBase<1)throw Error('Revisão de referência inválida.');
- const ref=pathFor(usuarioAtual().uid);
+ const uid=usuarioAtual().uid;
+ const ref=pathFor(uid);
  return runTransaction(db,async tx=>{
+  if(auth?.currentUser?.uid!==uid)throw Error('Conta Firebase mudou durante a sincronização.');
   const snap=await tx.get(ref);
+  if(auth?.currentUser?.uid!==uid)throw Error('Conta Firebase mudou durante a sincronização.');
   if(!snap.exists())throw Error('Dados remotos ausentes.');
   const cloud=snap.data();validarEstado(cloud);
   if(!Number.isInteger(cloud.revisao)||cloud.revisao<revisaoBase)throw Error('Revisão remota inconsistente.');
@@ -212,6 +215,7 @@ export async function sincronizarTresVias(base,local,revisaoBase){
   const changed=['casas','entradas','movimentacoes'].some(k=>!equal(merged[k],cloud[k]));
   if(!changed)return {estado:merged,revisao:cloud.revisao,semAlteracoes:true};
   const revisao=cloud.revisao+1;
+  if(auth?.currentUser?.uid!==uid)throw Error('Conta Firebase mudou antes da gravação.');
   tx.set(ref,{...merged,revisao,versaoEsquema:1,atualizadoEm:new Date().toISOString()});
   return {estado:merged,revisao};
  });
@@ -259,6 +263,134 @@ export async function executarLaboratorio(acao){
   tx.set(ref,next);
   return next;
  });
+}
+
+// Teste financeiro fictício: usa exclusivamente o documento sync_lab/isolated_v1.
+// NUNCA lê ou grava users/{uid}/state/current, apostas ou saldos reais.
+export async function testeFinanceiroIsolado(acao, origem) {
+ if(!['consultar','registrar'].includes(acao))throw Error('Ação inválida.');
+ if(acao==='registrar' && !['computador','celular'].includes(origem))throw Error('Origem inválida.');
+ const ref=laboratorioRef(usuarioAtual().uid);
+ if(acao==='consultar'){
+  const snap=await getDoc(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Inicie o laboratório Firebase isolado primeiro.');
+  const d=snap.data();
+  return {revisao:d.revisao,entradas:d.financeiroFicticio||[]};
+ }
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado não iniciado.');
+  const d=snap.data(), entradas=d.financeiroFicticio||[];
+  if(!Array.isArray(entradas)||entradas.length>=20)throw Error('Limite de 20 registros fictícios atingido; nenhuma alteração.');
+  const registro={id:'ficticio-'+crypto.randomUUID(),origem,resultado:'PENDENTE',stake:1,odd:2,criadoEm:new Date().toISOString()};
+  const next={...d,financeiroFicticio:[...entradas,registro],revisao:d.revisao+1,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);
+  return {revisao:next.revisao,entradas:next.financeiroFicticio};
+ });
+}
+
+// Homologação: usa a MESMA conciliarTresVias da sincronização financeira,
+// mas persiste somente em sync_lab/isolated_v1, nunca em state/current.
+export async function homologarFinanceiroIsolado(acao,origem){
+ if(!['consultar','iniciar','adicionar'].includes(acao))throw Error('Ação de homologação inválida.');
+ if(acao==='adicionar'&&!['computador','celular'].includes(origem))throw Error('Origem inválida.');
+ const ref=laboratorioRef(usuarioAtual().uid);
+ const inicial={casas:[{id:'hom-casa',nome:'Casa fictícia de homologação'}],entradas:[],movimentacoes:[]};
+ const validar=d=>{if(!d||d.tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado não iniciado.');};
+ if(acao==='consultar'){
+  const snap=await getDoc(ref);
+  if(!snap.exists())throw Error('Inicie o laboratório isolado.');
+  const d=snap.data();validar(d);
+  return {revisao:d.revisao,estado:d.homologacaoFinanceira||null};
+ }
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists())throw Error('Inicie o laboratório isolado.');
+  const d=snap.data();validar(d);
+  const atual=d.homologacaoFinanceira;
+  if(acao==='iniciar'&&atual)return {revisao:d.revisao,estado:atual,semAlteracoes:true};
+  if(acao==='adicionar'&&!atual)throw Error('Inicie a homologação antes de registrar.');
+  const base=atual||inicial;
+  validarEstado(base);
+  if(base.entradas.length>=12)throw Error('Limite de 12 apostas fictícias na homologação.');
+  const local=structuredClone(base);
+  if(acao==='adicionar')local.entradas.push({
+   id:'hom-'+crypto.randomUUID(),casaId:'hom-casa',resultado:'PENDENTE',
+   stake:1,odd:2,origem,criadoEm:new Date().toISOString()
+  });
+  const merged=conciliarTresVias(base,local,base);
+  const next={...d,homologacaoFinanceira:merged,revisao:d.revisao+1,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);
+  return {revisao:next.revisao,estado:merged};
+ });
+}
+
+// Simula duas edições a partir da MESMA base, com gravação de relatório
+// exclusivamente no laboratório Firebase; não toca dados financeiros reais.
+export async function testarConcorrenciaHomologacao(){
+ const ref=laboratorioRef(usuarioAtual().uid);
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado não iniciado.');
+  const d=snap.data();
+  if(!d.homologacaoFinanceira)throw Error('Inicie a homologação financeira primeiro.');
+  const base={casas:[{id:'conc-casa'}],entradas:[],movimentacoes:[]};
+  const pc=structuredClone(base),cel=structuredClone(base);
+  pc.entradas.push({id:'conc-pc',casaId:'conc-casa',stake:1,odd:2,resultado:'PENDENTE'});
+  cel.entradas.push({id:'conc-cel',casaId:'conc-casa',stake:1,odd:2,resultado:'PENDENTE'});
+  const aposPC=conciliarTresVias(base,pc,base);
+  const aposCel=conciliarTresVias(base,cel,aposPC);
+  if(aposCel.entradas.length!==2||!aposCel.entradas.some(x=>x.id==='conc-pc')||!aposCel.entradas.some(x=>x.id==='conc-cel'))throw Error('Inclusões independentes não foram preservadas.');
+  const antiga={...base,entradas:[{id:'conc-conflito',casaId:'conc-casa',stake:1,odd:2,resultado:'PENDENTE'}]};
+  const editPC=structuredClone(antiga),editCel=structuredClone(antiga);
+  editPC.entradas[0].resultado='RED';
+  editCel.entradas[0].resultado='GREEN';
+  let conflitoBloqueado=false;
+  try{conciliarTresVias(antiga,editCel,conciliarTresVias(antiga,editPC,antiga));}
+  catch(e){if(e.message.includes('Edição concorrente'))conflitoBloqueado=true;else throw e;}
+  if(!conflitoBloqueado)throw Error('Conflito de edição não bloqueado.');
+  const resultado={inclusoesPreservadas:2,conflitoBloqueado:true,metodo:'simulacao de duas bases desatualizadas; gravacao de relatorio isolado',testadoEm:new Date().toISOString()};
+  tx.set(ref,{...d,testeConcorrencia:resultado,revisao:d.revisao+1,atualizadoEm:new Date().toISOString()});
+  return {resultado,revisao:d.revisao+1};
+ });
+}
+
+// Concorrência real entre aparelhos: cada aba captura sua própria base em memória.
+// A transação lê o estado ATUAL do Firebase e concilia contra a base antiga capturada.
+// Somente sync_lab/isolated_v1; nunca acessa state/current.
+let baseConcorrenciaReal=null;
+export async function capturarBaseConcorrenciaReal(){
+ const uid=usuarioAtual().uid;
+ const snap=await getDoc(laboratorioRef(uid));
+ if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1'||!snap.data().homologacaoFinanceira)throw Error('Homologação financeira isolada não iniciada.');
+ const d=snap.data(),estado=structuredClone(d.homologacaoFinanceira);
+ validarEstado(estado);
+ baseConcorrenciaReal={uid,estado,revisao:d.revisao};
+ return {revisao:d.revisao,quantidade:estado.entradas.length};
+}
+export async function enviarConcorrenciaReal(origem){
+ if(!['computador','celular'].includes(origem))throw Error('Origem inválida.');
+ const uid=usuarioAtual().uid;
+ const base=baseConcorrenciaReal;
+ if(!base||base.uid!==uid)throw Error('Capture a base neste aparelho antes de enviar.');
+ const local=structuredClone(base.estado);
+ if(local.entradas.length>=12)throw Error('Limite de 12 apostas fictícias.');
+ const id='conc-real-'+crypto.randomUUID();
+ local.entradas.push({id,casaId:'hom-casa',resultado:'PENDENTE',stake:1,odd:2,origem,criadoEm:new Date().toISOString()});
+ const ref=laboratorioRef(uid);
+ const result=await runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado ausente.');
+  const d=snap.data(),cloud=d.homologacaoFinanceira;
+  validarEstado(cloud);
+  if(d.revisao<base.revisao)throw Error('Revisão do laboratório retrocedeu; operação bloqueada.');
+  const merged=conciliarTresVias(base.estado,local,cloud);
+  if(merged.entradas.length>12)throw Error('Limite de apostas fictícias excedido.');
+  tx.set(ref,{...d,homologacaoFinanceira:merged,revisao:d.revisao+1,atualizadoEm:new Date().toISOString()});
+  return {revisao:d.revisao+1,quantidade:merged.entradas.length,baseRevisao:base.revisao,baseDesatualizada:d.revisao!==base.revisao,origem};
+ });
+ baseConcorrenciaReal=null; // obriga nova captura; evita envios duplicados
+ return result;
 }
 
 // Fila de eventos fictícios criados offline; nunca acessa o estado financeiro.
