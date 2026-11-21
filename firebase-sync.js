@@ -232,6 +232,9 @@ export function testarConciliacaoEmMemoria(){
  check('Inclusões independentes',()=>{const s=conciliarTresVias(base,{...base,entradas:[aposta,novo]},{...base,entradas:[aposta,{...novo,id:'teste-outra'}]});if(s.entradas.length!==3)throw Error('Inclusão concorrente perdida');});
  check('Conflito bloqueado',()=>{try{conciliarTresVias(base,{...base,entradas:[{...aposta,resultado:'RED'}]},{...base,entradas:[{...aposta,resultado:'GREEN'}]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Conflito não bloqueado');});
  check('Exclusão bloqueada',()=>{try{conciliarTresVias(base,{...base,entradas:[]},base);}catch(e){if(e.message.includes('Exclusão detectada'))return;throw e;}throw Error('Exclusão não bloqueada');});
+ check('Edições iguais em ambos os aparelhos',()=>{const edit={...aposta,resultado:'RED'};const s=conciliarTresVias(base,{...base,entradas:[edit]},{...base,entradas:[edit]});if(s.entradas[0].resultado!=='RED')throw Error('Edição idêntica perdida');});
+ check('Conflito de valor bloqueado',()=>{try{conciliarTresVias(base,{...base,entradas:[{...aposta,stake:3}]},{...base,entradas:[{...aposta,stake:4}]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Conflito financeiro não bloqueado');});
+ check('Inclusão com mesmo ID divergente bloqueada',()=>{try{conciliarTresVias(base,{...base,entradas:[aposta,novo]},{...base,entradas:[aposta,{...novo,stake:99}]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Duplicidade divergente não bloqueada');});
  return {total:scenarios.length,aprovados:scenarios.filter(x=>x.ok).length,cenarios:scenarios};
 }
 
