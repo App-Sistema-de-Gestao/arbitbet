@@ -26,7 +26,8 @@ let syncRevision=0;
 let syncBusy=false;
 let syncTimer=null;
 let labTimer=null,labLastRevision=null,labPolling=false;
-function stopLabWatch(){if(labTimer)clearInterval(labTimer);labTimer=null;labLastRevision=null;}
+let labFinanceCount=null;
+function stopLabWatch(){if(labTimer)clearInterval(labTimer);labTimer=null;labLastRevision=null;labFinanceCount=null;}
 async function checkLabWatch(){
  if(!email||document.hidden||labPolling)return;
  labPolling=true;
@@ -37,6 +38,16 @@ async function checkLabWatch(){
   if(!s.existe){el.textContent='Laboratório ainda não criado.';return;}
   if(labLastRevision!==null && s.revisao>labLastRevision)el.textContent='ATUALIZAÇÃO AUTOMÁTICA RECEBIDA: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios · última origem: '+(s.eventos.at(-1)?.origem||'nenhuma');
   else if(labLastRevision===null)el.textContent='Monitor automático ativo · revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios.';
+  const financial=s.financeiroFicticio||[];
+  const f=$('labFinanceWatchStatus');
+  if(f){
+   if(!Array.isArray(financial)){f.textContent='Laboratório financeiro: dados fictícios inválidos.';}
+   else if(labFinanceCount!==null && financial.length>labFinanceCount){
+    const ultimo=financial.at(-1);
+    f.textContent='FINANCEIRO FICTÍCIO RECEBIDO AUTOMATICAMENTE · '+financial.length+' registros · última origem: '+(ultimo?.origem||'desconhecida')+' · revisão '+s.revisao+'. Nenhuma aposta real alterada.';
+   }else if(labFinanceCount===null){f.textContent='Monitor financeiro fictício ativo · '+financial.length+' registros · revisão '+s.revisao+'.';}
+   labFinanceCount=financial.length;
+  }
   labLastRevision=s.revisao;
  }catch(e){const el=$('labWatchStatus');if(el)el.textContent='Monitor do laboratório: '+e.message;}
  finally{labPolling=false;}
@@ -195,6 +206,7 @@ function modal(){
  <div class="border-t border-slate-700 pt-3 text-sm"><strong>Dados deste navegador:</strong><p id="cloudLocal" class="mt-1 text-slate-300"></p></div>
  <div class="text-sm"><strong>Dados da nuvem:</strong><p id="cloudRemote" class="mt-1 text-slate-300">Entre para consultar.</p></div>
  <p id="cloudInfo" role="status" class="text-xs text-sky-300"></p>\n <p id="labWatchStatus" role="status" class="text-xs text-emerald-300">Monitor do laboratório aguardando login.</p>
+ <p id="labFinanceWatchStatus" role="status" class="text-xs text-emerald-300">Monitor financeiro fictício aguardando login.</p>
  <div class="flex flex-wrap gap-2" id="cloudActions"></div></div>`;
  document.body.appendChild(box);
  $('cloudClose').onclick=()=>box.classList.add('hidden');
