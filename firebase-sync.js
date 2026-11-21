@@ -285,6 +285,42 @@ export async function testeFinanceiroIsolado(acao, origem) {
  });
 }
 
+// Homologação: usa a MESMA conciliarTresVias da sincronização financeira,
+// mas persiste somente em sync_lab/isolated_v1, nunca em state/current.
+export async function homologarFinanceiroIsolado(acao,origem){
+ if(!['consultar','iniciar','adicionar'].includes(acao))throw Error('Ação de homologação inválida.');
+ if(acao==='adicionar'&&!['computador','celular'].includes(origem))throw Error('Origem inválida.');
+ const ref=laboratorioRef(usuarioAtual().uid);
+ const inicial={casas:[{id:'hom-casa',nome:'Casa fictícia de homologação'}],entradas:[],movimentacoes:[]};
+ const validar=d=>{if(!d||d.tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado não iniciado.');};
+ if(acao==='consultar'){
+  const snap=await getDoc(ref);
+  if(!snap.exists())throw Error('Inicie o laboratório isolado.');
+  const d=snap.data();validar(d);
+  return {revisao:d.revisao,estado:d.homologacaoFinanceira||null};
+ }
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists())throw Error('Inicie o laboratório isolado.');
+  const d=snap.data();validar(d);
+  const atual=d.homologacaoFinanceira;
+  if(acao==='iniciar'&&atual)return {revisao:d.revisao,estado:atual,semAlteracoes:true};
+  if(acao==='adicionar'&&!atual)throw Error('Inicie a homologação antes de registrar.');
+  const base=atual||inicial;
+  validarEstado(base);
+  if(base.entradas.length>=12)throw Error('Limite de 12 apostas fictícias na homologação.');
+  const local=structuredClone(base);
+  if(acao==='adicionar')local.entradas.push({
+   id:'hom-'+crypto.randomUUID(),casaId:'hom-casa',resultado:'PENDENTE',
+   stake:1,odd:2,origem,criadoEm:new Date().toISOString()
+  });
+  const merged=conciliarTresVias(base,local,base);
+  const next={...d,homologacaoFinanceira:merged,revisao:d.revisao+1,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);
+  return {revisao:next.revisao,estado:merged};
+ });
+}
+
 // Fila de eventos fictícios criados offline; nunca acessa o estado financeiro.
 export async function enviarEventosLaboratorio(eventos){
  if(!Array.isArray(eventos)||!eventos.length||eventos.length>20)throw Error('Fila de laboratório inválida.');
