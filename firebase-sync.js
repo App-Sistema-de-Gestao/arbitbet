@@ -77,24 +77,30 @@ export async function mesclarSemPerdas(local) {
     const atual = snap.exists() ? snap.data() : {revisao:0,casas:[],entradas:[],movimentacoes:[]};
     validarEstado(atual);
     const combinado = {};
+    let houveInclusao = false;
     for (const campo of ['casas','entradas','movimentacoes']) {
       const mapa = new Map();
       for (const item of atual[campo]) {
         if (!item?.id || mapa.has(String(item.id))) throw new Error('ID inválido ou duplicado na nuvem: '+campo);
         mapa.set(String(item.id), item);
       }
+      const idsLocais = new Set();
       for (const item of local[campo]) {
+        if (item?.id && idsLocais.has(String(item.id))) throw new Error('ID duplicado no navegador: '+campo);
+        if (item?.id) idsLocais.add(String(item.id));
         if (!item?.id) throw new Error('ID inválido no navegador: '+campo);
         const antigo = mapa.get(String(item.id));
         if (antigo && JSON.stringify(antigo)!==JSON.stringify(item)) {
           throw new Error('Conflito em '+campo+' / '+item.id+'. Nenhum dado foi alterado. É preciso conciliar a edição antes de sincronizar.');
         }
+        if (!antigo) houveInclusao = true;
         mapa.set(String(item.id), item);
       }
       combinado[campo]=Array.from(mapa.values());
     }
     const ids=new Set(combinado.casas.map(c=>c.id));
     if(combinado.entradas.some(e=>!ids.has(e.casaId))||combinado.movimentacoes.some(m=>!ids.has(m.casaId)))throw new Error('Referências inválidas; sincronização cancelada.');
+    if (!houveInclusao && snap.exists()) return {estado:combinado,revisao:atual.revisao||0,semAlteracoes:true};
     const revisao=(atual.revisao||0)+1;
     tx.set(ref,{...combinado,revisao,versaoEsquema:1,atualizadoEm:new Date().toISOString()});
     return {estado:combinado,revisao};
