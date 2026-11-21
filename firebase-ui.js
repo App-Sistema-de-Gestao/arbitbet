@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, observarUsuario } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, observarUsuario } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -16,7 +16,7 @@ const valid = s => s && Array.isArray(s.casas) && Array.isArray(s.entradas) && A
 const button = (text, fn) => { const b = document.createElement('button'); b.type='button'; b.textContent=text; b.className='rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-white bg-slate-800'; b.onclick=fn; return b; };
 let remote=null, email='';
 function info(t){$('cloudInfo').textContent=t;}
-function setActions(enabled){['cloudDownload','cloudUpload'].forEach(id=>$(id).disabled=!enabled);}
+function setActions(enabled){['cloudDownload','cloudUpload','cloudMerge'].forEach(id=>$(id).disabled=!enabled);}
 function downloadJson(s, prefix){const a=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({...s,exportadoEm:new Date().toISOString()},null,2)],{type:'application/json'}));a.href=url;a.download=prefix+'-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
 function resumo(s){const dep=(s.movimentacoes||[]).filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+Number(m.valor||0),0);return counts(s)+' · Depósitos R$ '+dep.toFixed(2).replace('.',',');}
 function modal(){
@@ -39,6 +39,7 @@ function modal(){
  actions.append(button('Consultar nuvem', refresh));
  const restore=button('Restaurar da nuvem', restoreCloud);restore.id='cloudDownload';actions.append(restore);
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
+ const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
  actions.append(button('Backup local JSON',()=>downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-antes-sync')));
  setActions(false);
 }
@@ -58,6 +59,19 @@ async function restoreCloud(){
  downloadJson(local,'arbitbet-antes-restauracao-nuvem');
  try{window.arbitbetCloudBridge.replace({casas:clone(remote.casas),entradas:clone(remote.entradas),movimentacoes:clone(remote.movimentacoes)});$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());info('Restauração local concluída. Confira os saldos.');}
  catch(e){info('Falha ao restaurar: '+e.message);}
+}
+async function mergeCloud(){
+ const local=window.arbitbetCloudBridge.get();
+ if(!valid(local))return info('Dados locais inválidos.');
+ if(!confirm('MESCLAR SEM EXCLUIR?\\n\\nOs registros com IDs diferentes serão reunidos. Edições divergentes do mesmo registro serão BLOQUEADAS, sem substituir dados. Um backup local será baixado. Deseja continuar?'))return;
+ downloadJson(local,'arbitbet-antes-mesclagem');
+ try{
+  info('Comparando registros e verificando conflitos...');
+  const result=await mesclarSemPerdas(local);
+  window.arbitbetCloudBridge.replace(result.estado);
+  await refresh();
+  info('Mesclagem concluída com segurança (revisão '+result.revisao+'). Confira os saldos.');
+ }catch(e){info('MESCLAGEM NÃO CONCLUÍDA: '+e.message+' Nenhum registro local foi substituído.');}
 }
 async function uploadCloud(){
  const local=window.arbitbetCloudBridge.get();
