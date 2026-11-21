@@ -261,6 +261,30 @@ export async function executarLaboratorio(acao){
  });
 }
 
+// Teste financeiro fictício: usa exclusivamente o documento sync_lab/isolated_v1.
+// NUNCA lê ou grava users/{uid}/state/current, apostas ou saldos reais.
+export async function testeFinanceiroIsolado(acao, origem) {
+ if(!['consultar','registrar'].includes(acao))throw Error('Ação inválida.');
+ if(acao==='registrar' && !['computador','celular'].includes(origem))throw Error('Origem inválida.');
+ const ref=laboratorioRef(usuarioAtual().uid);
+ if(acao==='consultar'){
+  const snap=await getDoc(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Inicie o laboratório Firebase isolado primeiro.');
+  const d=snap.data();
+  return {revisao:d.revisao,entradas:d.financeiroFicticio||[]};
+ }
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado não iniciado.');
+  const d=snap.data(), entradas=d.financeiroFicticio||[];
+  if(!Array.isArray(entradas)||entradas.length>=20)throw Error('Limite de 20 registros fictícios atingido; nenhuma alteração.');
+  const registro={id:'ficticio-'+crypto.randomUUID(),origem,resultado:'PENDENTE',stake:1,odd:2,criadoEm:new Date().toISOString()};
+  const next={...d,financeiroFicticio:[...entradas,registro],revisao:d.revisao+1,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);
+  return {revisao:next.revisao,entradas:next.financeiroFicticio};
+ });
+}
+
 // Fila de eventos fictícios criados offline; nunca acessa o estado financeiro.
 export async function enviarEventosLaboratorio(eventos){
  if(!Array.isArray(eventos)||!eventos.length||eventos.length>20)throw Error('Fila de laboratório inválida.');
