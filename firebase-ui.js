@@ -51,7 +51,7 @@ async function safeSync(){
    setBaseline({...result.estado,revisao:result.revisao});
    return;
   }
-  window.arbitbetCloudBridge.replace(result.estado);
+  if(!sameState(latest,result.estado))window.arbitbetCloudBridge.replace(result.estado);
   setBaseline({...result.estado,revisao:result.revisao});
   $('cloudLocal').textContent=resumo(result.estado);
   $('cloudRemote').textContent=resumo(result.estado)+' · Revisão '+result.revisao;
@@ -165,7 +165,7 @@ function modal(){
  const box=document.createElement('div');box.id='cloudOverlay';box.className='fixed inset-0 z-[100] hidden items-center justify-center bg-black/85 p-4';
  box.innerHTML=`<div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-emerald-500/50 bg-[#12161f] p-5 space-y-4 text-white">
  <div class="flex justify-between items-center"><h2 class="font-bold text-lg text-emerald-400">Firebase · sincronização de testes</h2><button type="button" id="cloudClose" aria-label="Fechar">✕</button></div>
- <p class="text-xs text-amber-300">Experimental. Nenhum dado é enviado automaticamente. Faça backup antes de gravar ou restaurar.</p>
+ <p class="text-xs text-amber-300">Experimental. A sincronização segura pode enviar alterações automaticamente quando os dados coincidem. Faça backup antes de gravar ou restaurar.</p>
  <form id="cloudLogin" class="space-y-2"><input id="cloudEmail" type="email" required autocomplete="username" placeholder="E-mail do Firebase" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white">
  <input id="cloudPassword" type="password" required autocomplete="current-password" placeholder="Senha do Firebase" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white">
  <button class="rounded-lg bg-emerald-500 text-black font-bold p-3 w-full">Entrar na nuvem</button></form>
@@ -183,6 +183,7 @@ function modal(){
  const upload=button('Enviar para nuvem', uploadCloud);upload.id='cloudUpload';actions.append(upload);
  const merge=button('Mesclar sem excluir',mergeCloud);merge.id='cloudMerge';actions.append(merge);
  actions.append(button('Diagnosticar diferenças (somente leitura)',diagnose));
+ actions.append(button('Verificar este dispositivo (somente leitura)',async()=>{try{const data=await consultarNuvem();if(!data.existe||!valid(data))throw Error('Nuvem indisponível');const local=window.arbitbetCloudBridge.get();const d=differences(local,data);const iguais=sameState(local,data);remote=data;$('cloudLocal').textContent=resumo(local);$('cloudRemote').textContent=resumo(data)+' · Revisão '+data.revisao;info((iguais?'DISPOSITIVO CONFERIDO: dados idênticos. ':'ATENÇÃO: existem diferenças. ')+diagnosticText(d)+'. Nenhum dado foi gravado ou restaurado.');}catch(e){info('Verificação interrompida: '+e.message);}}));
  actions.append(button('Testar sincronização em memória (sem gravar)',()=>{const t=testarConciliacaoEmMemoria();info('Teste sem gravar: '+t.aprovados+'/'+t.total+' cenários aprovados. '+t.cenarios.filter(x=>!x.ok).map(x=>x.nome+': '+x.erro).join(' | '));}));
  actions.append(button('Conciliar 99play — 2 apostas + 1 RED (teste)',conciliar99playUI));
  const autoButton=button('Ativar envio automático (teste)',()=>{void toggleAutoWrite().catch(e=>info('Não foi possível ativar: '+e.message));});autoButton.id='cloudAutoWrite';actions.append(autoButton);
