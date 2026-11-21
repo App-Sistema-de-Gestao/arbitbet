@@ -25,6 +25,24 @@ let syncBaseline=null;
 let syncRevision=0;
 let syncBusy=false;
 let syncTimer=null;
+let labTimer=null,labLastRevision=null,labPolling=false;
+function stopLabWatch(){if(labTimer)clearInterval(labTimer);labTimer=null;labLastRevision=null;}
+async function checkLabWatch(){
+ if(!email||document.hidden||labPolling)return;
+ labPolling=true;
+ try{
+  const s=await consultarLaboratorio();
+  const el=$('labWatchStatus');
+  if(!el)return;
+  if(!s.existe){el.textContent='Laboratório ainda não criado.';return;}
+  if(labLastRevision!==null && s.revisao>labLastRevision)el.textContent='ATUALIZAÇÃO AUTOMÁTICA RECEBIDA: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios · última origem: '+(s.eventos.at(-1)?.origem||'nenhuma');
+  else if(labLastRevision===null)el.textContent='Monitor automático ativo · revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios.';
+  labLastRevision=s.revisao;
+ }catch(e){const el=$('labWatchStatus');if(el)el.textContent='Monitor do laboratório: '+e.message;}
+ finally{labPolling=false;}
+}
+function startLabWatch(){stopLabWatch();labTimer=setInterval(()=>{void checkLabWatch();},5000);void checkLabWatch();}
+
 function setBaseline(data){
  if(!valid(data)||!Number.isInteger(data.revisao))return;
  syncBaseline=clone({casas:data.casas,entradas:data.entradas,movimentacoes:data.movimentacoes});
@@ -172,7 +190,7 @@ function modal(){
  <div id="cloudLogged" class="hidden space-y-2"><div id="cloudUser" class="text-sm"></div><button id="cloudLogout" type="button" class="text-sm text-amber-300 underline">Sair da nuvem</button></div>
  <div class="border-t border-slate-700 pt-3 text-sm"><strong>Dados deste navegador:</strong><p id="cloudLocal" class="mt-1 text-slate-300"></p></div>
  <div class="text-sm"><strong>Dados da nuvem:</strong><p id="cloudRemote" class="mt-1 text-slate-300">Entre para consultar.</p></div>
- <p id="cloudInfo" role="status" class="text-xs text-sky-300"></p>
+ <p id="cloudInfo" role="status" class="text-xs text-sky-300"></p>\n <p id="labWatchStatus" role="status" class="text-xs text-emerald-300">Monitor do laboratório aguardando login.</p>
  <div class="flex flex-wrap gap-2" id="cloudActions"></div></div>`;
  document.body.appendChild(box);
  $('cloudClose').onclick=()=>box.classList.add('hidden');
@@ -310,7 +328,7 @@ function start(){
  modal();
  const btn=button('☁ Nuvem (teste)',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
- try{configurarFirebase(config);observarUsuario(user=>{email=user?.email||'';$('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);$('cloudUser').textContent=user?'Conectado: '+email:'';remote=null;setActions(false);$('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';if(user){void refresh().then(()=>{if(remote)startSafeSync(remote);});startAuto();}else{stopAuto();stopSafeSync();lastAutoNotice='';}});}
+ try{configurarFirebase(config);observarUsuario(user=>{email=user?.email||'';$('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);$('cloudUser').textContent=user?'Conectado: '+email:'';remote=null;setActions(false);$('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';if(user){void refresh().then(()=>{if(remote)startSafeSync(remote);});startAuto();startLabWatch();}else{stopAuto();stopSafeSync();stopLabWatch();lastAutoNotice='';}});}
  catch(e){info('Firebase indisponível: '+e.message);}
  $('cloudLogin').onsubmit=async e=>{e.preventDefault();try{info('Autenticando...');await entrar($('cloudEmail').value,$('cloudPassword').value);$('cloudPassword').value='';info('Login realizado.');}catch(err){info('Login não realizado: '+err.message);}};
  $('cloudLogout').onclick=async()=>{await sair();info('Saiu da nuvem. Os dados locais permanecem.');};
