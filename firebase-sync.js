@@ -202,9 +202,12 @@ export function conciliarTresVias(base,local,cloud){
 export async function sincronizarTresVias(base,local,revisaoBase){
  validarEstado(base);validarEstado(local);
  if(!Number.isInteger(revisaoBase)||revisaoBase<1)throw Error('Revisão de referência inválida.');
- const ref=pathFor(usuarioAtual().uid);
+ const uid=usuarioAtual().uid;
+ const ref=pathFor(uid);
  return runTransaction(db,async tx=>{
+  if(auth?.currentUser?.uid!==uid)throw Error('Conta Firebase mudou durante a sincronização.');
   const snap=await tx.get(ref);
+  if(auth?.currentUser?.uid!==uid)throw Error('Conta Firebase mudou durante a sincronização.');
   if(!snap.exists())throw Error('Dados remotos ausentes.');
   const cloud=snap.data();validarEstado(cloud);
   if(!Number.isInteger(cloud.revisao)||cloud.revisao<revisaoBase)throw Error('Revisão remota inconsistente.');
@@ -212,6 +215,7 @@ export async function sincronizarTresVias(base,local,revisaoBase){
   const changed=['casas','entradas','movimentacoes'].some(k=>!equal(merged[k],cloud[k]));
   if(!changed)return {estado:merged,revisao:cloud.revisao,semAlteracoes:true};
   const revisao=cloud.revisao+1;
+  if(auth?.currentUser?.uid!==uid)throw Error('Conta Firebase mudou antes da gravação.');
   tx.set(ref,{...merged,revisao,versaoEsquema:1,atualizadoEm:new Date().toISOString()});
   return {estado:merged,revisao};
  });
