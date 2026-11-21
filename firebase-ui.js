@@ -247,6 +247,25 @@ function modal(){
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
  actions.append(button('Laboratório — criar evento offline (fila fictícia)',()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||list.length>=20)throw Error('Fila inválida ou cheia');const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';list.push({id:'offline-'+crypto.randomUUID(),origem,data:new Date().toISOString()});localStorage.setItem(key,JSON.stringify(list));info('Evento fictício salvo SOMENTE neste aparelho. Fila offline: '+list.length+'. Nenhum dado enviado ao Firebase.');}catch(e){info('Falha ao criar evento offline: '+e.message);}}));
  actions.append(button('Laboratório — enviar fila offline (isolado)',async()=>{try{const key='arbitbet_sync_lab_offline_queue_v1';const list=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(list)||!list.length)return info('Fila offline vazia neste aparelho.');if(!confirm('Enviar '+list.length+' eventos fictícios da fila offline ao laboratório? NÃO altera apostas reais.'))return;const s=await enviarEventosLaboratorio(list);localStorage.removeItem(key);info('Fila fictícia conciliada: revisão '+s.revisao+' · '+s.eventos.length+' eventos no laboratório. Fila local limpa.');}catch(e){info('Fila offline PRESERVADA: '+e.message);}}));
+ actions.append(button('Auditoria final da sincronização financeira (somente leitura)',async()=>{
+  try{
+   if(!email)throw Error('Entre no Firebase.');
+   if(syncBusy)throw Error('Sincronização em andamento; aguarde e repita a auditoria.');
+   const localAntes=window.arbitbetCloudBridge.get();
+   if(!valid(localAntes))throw Error('Dados locais inválidos.');
+   const cloud=await consultarNuvem();
+   if(!cloud.existe||!valid(cloud))throw Error('Dados da nuvem indisponíveis.');
+   const localDepois=window.arbitbetCloudBridge.get();
+   if(!sameState(localAntes,localDepois))throw Error('Dados locais mudaram durante a auditoria; repita depois.');
+   const d=differences(localDepois,cloud);
+   const iguais=sameState(localDepois,cloud);
+   const baseAtiva=!!syncBaseline&&syncTimer!==null&&!autoUploadEnabled;
+   const baseIgual=baseAtiva&&sameState(syncBaseline,cloud);
+   const revisaoIgual=baseAtiva&&syncRevision===cloud.revisao;
+   const aprovado=iguais&&baseIgual&&revisaoIgual&&localDepois.entradas.length===38&&localDepois.casas.length===5&&localDepois.movimentacoes.length===12;
+   info((aprovado?'AUDITORIA FINANCEIRA APROVADA':'AUDITORIA FINANCEIRA REQUER CONFERÊNCIA')+' · navegador: '+resumo(localDepois)+' · nuvem: '+resumo(cloud)+' · revisão '+cloud.revisao+' · rotina ativa: '+(baseAtiva?'sim':'não')+' · base igual: '+(baseIgual?'sim':'não')+' · revisão da base igual: '+(revisaoIgual?'sim':'não')+' · '+diagnosticText(d)+'. Somente leitura; nenhum dado gravado.');
+  }catch(e){info('AUDITORIA INTERROMPIDA: '+e.message+'. Nenhum dado gravado.');}
+ }));
  actions.append(button('Financeiro fictício — registrar neste aparelho (isolado)',async()=>{
   if(!email)return info('Entre no Firebase primeiro.');
   if(!confirm('Criar uma aposta FICTÍCIA de R$ 1,00 SOMENTE no laboratório separado? Não altera suas apostas ou saldos reais.'))return;
@@ -281,7 +300,7 @@ function modal(){
  for(const el of [...actions.children]){
   if(el===advanced)continue;
   const t=el.textContent||'';
-  if(/Laboratório|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+  if(/Laboratório|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
  }
  setActions(false);
 }
