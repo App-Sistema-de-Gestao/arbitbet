@@ -605,6 +605,7 @@
             function salvarEstado() {
                 try {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(estado));
+                    window.dispatchEvent(new Event('arbitbet:local-change'));
                 } catch (err) {
                     console.error('Erro ao salvar dados locais:', err);
                 }
