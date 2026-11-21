@@ -321,6 +321,36 @@ export async function homologarFinanceiroIsolado(acao,origem){
  });
 }
 
+// Simula duas edições a partir da MESMA base, com gravação de relatório
+// exclusivamente no laboratório Firebase; não toca dados financeiros reais.
+export async function testarConcorrenciaHomologacao(){
+ const ref=laboratorioRef(usuarioAtual().uid);
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);
+  if(!snap.exists()||snap.data().tipo!=='arbitbet-sync-lab-v1')throw Error('Laboratório isolado não iniciado.');
+  const d=snap.data();
+  if(!d.homologacaoFinanceira)throw Error('Inicie a homologação financeira primeiro.');
+  const base={casas:[{id:'conc-casa'}],entradas:[],movimentacoes:[]};
+  const pc=structuredClone(base),cel=structuredClone(base);
+  pc.entradas.push({id:'conc-pc',casaId:'conc-casa',stake:1,odd:2,resultado:'PENDENTE'});
+  cel.entradas.push({id:'conc-cel',casaId:'conc-casa',stake:1,odd:2,resultado:'PENDENTE'});
+  const aposPC=conciliarTresVias(base,pc,base);
+  const aposCel=conciliarTresVias(base,cel,aposPC);
+  if(aposCel.entradas.length!==2||!aposCel.entradas.some(x=>x.id==='conc-pc')||!aposCel.entradas.some(x=>x.id==='conc-cel'))throw Error('Inclusões independentes não foram preservadas.');
+  const antiga={...base,entradas:[{id:'conc-conflito',casaId:'conc-casa',stake:1,odd:2,resultado:'PENDENTE'}]};
+  const editPC=structuredClone(antiga),editCel=structuredClone(antiga);
+  editPC.entradas[0].resultado='RED';
+  editCel.entradas[0].resultado='GREEN';
+  let conflitoBloqueado=false;
+  try{conciliarTresVias(antiga,editCel,conciliarTresVias(antiga,editPC,antiga));}
+  catch(e){if(e.message.includes('Edição concorrente'))conflitoBloqueado=true;else throw e;}
+  if(!conflitoBloqueado)throw Error('Conflito de edição não bloqueado.');
+  const resultado={inclusoesPreservadas:2,conflitoBloqueado:true,metodo:'simulacao de duas bases desatualizadas; gravacao de relatorio isolado',testadoEm:new Date().toISOString()};
+  tx.set(ref,{...d,testeConcorrencia:resultado,revisao:d.revisao+1,atualizadoEm:new Date().toISOString()});
+  return {resultado,revisao:d.revisao+1};
+ });
+}
+
 // Fila de eventos fictícios criados offline; nunca acessa o estado financeiro.
 export async function enviarEventosLaboratorio(eventos){
  if(!Array.isArray(eventos)||!eventos.length||eventos.length>20)throw Error('Fila de laboratório inválida.');
