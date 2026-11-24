@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, recuperarSenha, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -493,31 +493,74 @@ async function uploadCloud(){
 window.addEventListener('arbitbet:local-change',()=>{
  if(syncBaseline)void safeSync();
 });
+// Login único: não iniciar sincronização antes de validar a conta e os dados locais.
 function start(){
  if(!window.arbitbetCloudBridge)return;
  modal();
- const btn=button('☁ Nuvem (teste)',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
+ const btn=button('☁ Nuvem',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
+ const gate=$('loginOverlay'), form=$('formLogin'), status=$('loginErro'), ownerKey='arbitbet_financial_owner_v1';
+ const lock=()=>{gate.style.display='flex';$('cloudOverlay').classList.add('hidden');$('cloudOverlay').classList.remove('flex');};
+ const ready=(yes)=>{$('loginEntrar').disabled=!yes;$('loginRecuperar').disabled=!yes;};
+ const restore=button('Conferir e recuperar dados da nuvem',()=>{});restore.classList.add('hidden','w-full');form.append(restore);
+ const retry=button('Tentar novamente',()=>{});retry.classList.add('hidden','w-full');form.append(retry);
+ $('loginMostrar').onclick=()=>{const p=$('loginSenha');p.type=p.type==='password'?'text':'password';$('loginMostrar').textContent=p.type==='password'?'Mostrar':'Ocultar';};
+ $('loginTrocar').onclick=async()=>{try{await sair();}catch(e){status.textContent='Não foi possível sair. Tente novamente.';}};
+ $('btnSair').onclick=async()=>{lock();stopSafeSync();stopAuto();stopLabWatch();try{await sair();}catch(e){status.textContent='Não foi possível sair. Tente novamente.';$('loginTrocar').classList.remove('hidden');}};
+ form.onsubmit=async e=>{e.preventDefault();ready(false);status.textContent='Autenticando...';try{await entrar($('loginEmail').value.trim(),$('loginSenha').value);$('loginSenha').value='';}catch(e){status.textContent='Não foi possível entrar. Confira e-mail, senha e conexão.';ready(true);}};
+ $('loginRecuperar').onclick=async()=>{const field=$('loginEmail');if(!field.reportValidity())return;try{await recuperarSenha(field.value);status.textContent='Se a conta estiver cadastrada, confira seu e-mail para redefinir a senha.';}catch(e){status.textContent='Não foi possível solicitar a recuperação. Confira a conexão e tente novamente.';}};
+ async function prepare(user,epoch){
+  const active=()=>epoch===authEpoch&&currentUid===user.uid;
+  restore.classList.add('hidden');retry.classList.add('hidden');status.textContent='Conferindo seus dados com a nuvem...';
+  try{
+   const owner=localStorage.getItem(ownerKey);
+   if(owner&&owner!==user.uid){status.textContent='Este navegador contém dados vinculados a outra conta. Entre com a conta original. Nenhum dado foi alterado.';return;}
+   const data=await consultarNuvem();if(!active())return;
+   if(!data.existe||!valid(data))throw Error('Não há dados financeiros válidos na nuvem para esta conta.');
+   const local=window.arbitbetCloudBridge.get();
+   const empty=!local.casas.length&&!local.entradas.length&&!local.movimentacoes.length;
+   function unlock(cloud){
+    if(!active())return;
+    localStorage.setItem(ownerKey,user.uid);remote=cloud;
+    $('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());
+    $('cloudRemote').textContent=resumo(cloud)+' · Revisão '+cloud.revisao;
+    setActions(true);startSafeSync(cloud);startAuto();startLabWatch();
+    gate.style.display='none';status.textContent='';restore.classList.add('hidden');retry.classList.add('hidden');
+   }
+   if(empty){window.arbitbetCloudBridge.replace({casas:clone(data.casas),entradas:clone(data.entradas),movimentacoes:clone(data.movimentacoes)});unlock(data);return;}
+   if(sameState(local,data)){unlock(data);return;}
+   status.textContent='Dados locais diferentes da nuvem. Nenhum dado foi enviado. Local: '+resumo(local)+' | Nuvem: '+resumo(data)+'.';
+   restore.classList.remove('hidden');
+   restore.onclick=async()=>{
+    if(!active())return;
+    restore.disabled=true;
+    try{
+     const fresh=await consultarNuvem();if(!active())return;
+     if(!fresh.existe||!valid(fresh))throw Error('Nuvem indisponível.');
+     const current=window.arbitbetCloudBridge.get();
+     if(!confirm('Substituir apenas os dados deste navegador pelos dados da sua conta na nuvem? Local: '+resumo(current)+' | Nuvem: '+resumo(fresh)+'. Será baixado um backup local. Nenhum dado será enviado à nuvem.'))return;
+     downloadJson(current,'arbitbet-antes-login-unico');
+     window.arbitbetCloudBridge.replace({casas:clone(fresh.casas),entradas:clone(fresh.entradas),movimentacoes:clone(fresh.movimentacoes)});
+     unlock(fresh);
+    }catch(e){status.textContent='Recuperação interrompida: '+e.message;}finally{restore.disabled=false;}
+   };
+  }catch(e){if(active()){status.textContent='Acesso aguardando conferência: '+e.message;retry.classList.remove('hidden');retry.onclick=()=>{if(active())void prepare(user,epoch);};}}
+ }
+ lock();ready(false);
  try{configurarFirebase(config);observarUsuario(user=>{
   const epoch=++authEpoch;
-  stopAuto();stopSafeSync();stopLabWatch();
-  currentUid=user?.uid||null;
-  email=user?.email||'';
-  remote=null;lastAutoNotice='';
-  $('cloudLogin').classList.toggle('hidden',!!user);
-  $('cloudLogged').classList.toggle('hidden',!user);
-  $('cloudUser').textContent=user?'Conectado: '+email:'';
-  setActions(false);
-  $('cloudRemote').textContent=user?'Clique em Consultar nuvem.':'Entre para consultar.';
-  if(user){
-   void refresh().then(()=>{
-    if(epoch===authEpoch&&currentUid===user.uid&&remote)startSafeSync(remote);
-   });
-   startAuto();startLabWatch();
-  }
-});}
- catch(e){info('Firebase indisponível: '+e.message);}
- $('cloudLogin').onsubmit=async e=>{e.preventDefault();try{info('Autenticando...');await entrar($('cloudEmail').value,$('cloudPassword').value);$('cloudPassword').value='';info('Login realizado.');}catch(err){info('Login não realizado: '+err.message);}};
- $('cloudLogout').onclick=async()=>{await sair();info('Saiu da nuvem. Os dados locais permanecem.');};
+  stopAuto();stopSafeSync();stopLabWatch();lock();
+  currentUid=user?.uid||null;email=user?.email||'';remote=null;lastAutoNotice='';
+  $('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);
+  $('cloudUser').textContent=user?'Conectado: '+email:'';setActions(false);
+  restore.classList.add('hidden');retry.classList.add('hidden');
+  $('loginTrocar').classList.toggle('hidden',!user);
+  ready(!user);$('loginEmail').disabled=!!user;$('loginSenha').disabled=!!user;
+  if(user){$('loginEmail').value=email;void prepare(user,epoch);}
+  else{status.textContent='Entre com sua conta Firebase.';$('cloudRemote').textContent='Entre para consultar.';}
+ });}
+ catch(e){status.textContent='Firebase indisponível. Reabra o aplicativo quando estiver conectado.';}
+ $('cloudLogin').onsubmit=e=>e.preventDefault();
+ $('cloudLogout').onclick=()=> $('btnSair').click();
 }
 start();
