@@ -897,12 +897,15 @@
                 document.querySelectorAll('.btn-finalizar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.final);if(!e)return;document.getElementById('liquidarId').value=e.id;document.getElementById('liquidarDescricao').textContent=e.mercado+' — '+obterCasaPorId(e.casaId).nome+' — Stake '+formatBRL(e.stake);document.getElementById('liquidarResultado').value='GREEN';document.getElementById('liquidarRetorno').value='';atualizarLiquidacao();abrirModal('modalLiquidar');}));
                 document.querySelectorAll('.btn-editar-entrada').forEach(btn=>btn.addEventListener('click',()=>{const e=estado.entradas.find(x=>x.id===btn.dataset.edit);if(!e)return;document.getElementById('entradaEditId').value=e.id;document.getElementById('entradaCategoria').value=e.categoria||'NAO_CLASSIFICADA';document.getElementById('entradaData').value=e.data;document.getElementById('entradaCasa').value=e.casaId;document.getElementById('entradaMercado').value=e.mercado;document.getElementById('entradaOdd').value=e.odd;document.getElementById('entradaStake').value=e.stake;document.getElementById('entradaResultado').value=e.resultado;document.getElementById('entradaRetorno').value=e.retornoRecebido??'';atualizarCamposResultadoEntrada();document.getElementById('tituloEntrada').textContent='Editar Entrada';atualizarPreviewEntrada();abrirModal('modalEntrada');}));
                 document.querySelectorAll('.btn-excluir-entrada').forEach((btn) => {
-                    btn.addEventListener('click', () => {
+                    btn.addEventListener('click', async () => {
                         const id = btn.getAttribute('data-del');
-                        if(!confirm('Excluir esta entrada e recalcular os saldos?'))return;estado.entradas = estado.entradas.filter((e) => e.id !== id);
-                        salvarEstado();
-                        renderizarTudo();
-                        mostrarFeedback('Entrada removida do terminal.');
+                        if(!confirm('Excluir esta entrada em todos os dispositivos e recalcular os saldos?'))return;
+                        btn.disabled=true;
+                        try{
+                            if(!window.arbitbetExcluirEntrada)throw Error('Conecte-se à nuvem antes de excluir.');
+                            await window.arbitbetExcluirEntrada(id);
+                            mostrarFeedback('Entrada excluída na nuvem.');
+                        }catch(e){alert(e.message);}finally{btn.disabled=false;}
                     });
                 });
             }
