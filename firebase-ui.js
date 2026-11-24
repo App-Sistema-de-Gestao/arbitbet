@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, recuperarSenha, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
+import { configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -546,6 +546,21 @@ function start(){
    };
   }catch(e){if(active()){status.textContent='Acesso aguardando conferência: '+e.message;retry.classList.remove('hidden');retry.onclick=()=>{if(active())void prepare(user,epoch);};}}
  }
+ window.arbitbetExcluirEntrada=async id=>{
+  if(!currentUid||!syncBaseline||syncBusy)throw Error('Sincronização indisponível ou em andamento. Tente novamente.');
+  const uid=currentUid,epoch=authEpoch,local=window.arbitbetCloudBridge.get();
+  if(!sameState(local,syncBaseline))throw Error('Aguarde a sincronização das alterações pendentes.');
+  const entrada=local.entradas.find(x=>x.id===id);if(!entrada)throw Error('Entrada não encontrada.');
+  syncBusy=true;
+  try{
+   downloadJson(local,'arbitbet-antes-exclusao');
+   const next=await excluirEntradaConfirmada(entrada,true);
+   if(epoch!==authEpoch||uid!==currentUid)return;
+   if(!sameState(local,window.arbitbetCloudBridge.get())){pauseSync('Alteração local durante exclusão. Confira diferenças.');throw Error('Exclusão registrada na nuvem; confira alterações locais.');}
+   window.arbitbetCloudBridge.replace({casas:next.casas,entradas:next.entradas,movimentacoes:next.movimentacoes});
+   remote=next;startSafeSync(next);
+  }finally{syncBusy=false;}
+ };
  lock();ready(false);
  try{configurarFirebase(config);observarUsuario(user=>{
   const epoch=++authEpoch;
