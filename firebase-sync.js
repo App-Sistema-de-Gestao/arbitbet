@@ -1,7 +1,7 @@
 // Arbitbet V2 — infraestrutura isolada para testes. Não é carregada pela produção.
 // Não contém credenciais, não executa login ou gravação automaticamente.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 let auth, db;
@@ -23,6 +23,10 @@ export function observarUsuario(callback) {
 export async function entrar(email, senha) {
   if (!auth) throw new Error('Configure o Firebase primeiro.');
   return (await signInWithEmailAndPassword(auth, email, senha)).user;
+}
+export async function recuperarSenha(email) {
+  if (!auth) throw new Error('Firebase indisponível.');
+  await sendPasswordResetEmail(auth, email.trim());
 }
 export async function sair() {
   if (auth) await signOut(auth);
