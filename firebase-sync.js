@@ -1,7 +1,7 @@
 // Arbitbet V2 — infraestrutura isolada para testes. Não é carregada pela produção.
 // Não contém credenciais, não executa login ou gravação automaticamente.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 let auth, db;
@@ -23,6 +23,10 @@ export function observarUsuario(callback) {
 export async function entrar(email, senha) {
   if (!auth) throw new Error('Configure o Firebase primeiro.');
   return (await signInWithEmailAndPassword(auth, email, senha)).user;
+}
+export async function recuperarSenha(email) {
+  if (!auth) throw new Error('Firebase indisponível.');
+  await sendPasswordResetEmail(auth, email.trim());
 }
 export async function sair() {
   if (auth) await signOut(auth);
@@ -187,7 +191,7 @@ export function conciliarTresVias(base,local,cloud){
   const merged=new Map();
   for(const id of new Set([...b.keys(),...l.keys(),...r.keys()])){
    const before=b.get(id),mine=l.get(id),theirs=r.get(id);
-   if(before && (!mine||!theirs))throw Error('Exclusão detectada em '+campo+'/'+id+'. Sincronização pausada.');
+   if(before && !mine && theirs)throw Error('Exclusão detectada em '+campo+'/'+id+'. Sincronização pausada.');
    const localChanged=!equal(mine,before),cloudChanged=!equal(theirs,before);
    if(localChanged&&cloudChanged&&!equal(mine,theirs))throw Error('Edição concorrente em '+campo+'/'+id+'. Sincronização pausada.');
    const chosen=localChanged?mine:theirs;
@@ -198,6 +202,18 @@ export function conciliarTresVias(base,local,cloud){
  const casas=new Set(result.casas.map(x=>x.id));
  if(result.entradas.some(x=>!casas.has(x.casaId))||result.movimentacoes.some(x=>!casas.has(x.casaId)))throw Error('Referências inválidas. Sincronização pausada.');
  return result;
+}
+export async function excluirEntradaConfirmada(entrada, confirmado){
+ if(confirmado!==true||!entrada?.id)throw Error('Confirmação obrigatória.');
+ const uid=usuarioAtual().uid,ref=pathFor(uid);
+ return runTransaction(db,async tx=>{
+  const snap=await tx.get(ref);if(auth?.currentUser?.uid!==uid||!snap.exists())throw Error('Conta ou nuvem indisponível.');
+  const cloud=snap.data();validarEstado(cloud);
+  const found=cloud.entradas.find(x=>x.id===entrada.id);
+  if(!found||!equal(found,entrada))throw Error('Entrada ausente ou alterada na nuvem. Confira antes de excluir.');
+  const next={...cloud,entradas:cloud.entradas.filter(x=>x.id!==entrada.id),revisao:cloud.revisao+1,atualizadoEm:new Date().toISOString()};
+  tx.set(ref,next);return next;
+ });
 }
 export async function sincronizarTresVias(base,local,revisaoBase){
  validarEstado(base);validarEstado(local);
@@ -235,6 +251,8 @@ export function testarConciliacaoEmMemoria(){
  check('Atualização GREEN remota',()=>{const s=conciliarTresVias(base,base,{...base,entradas:[{...aposta,resultado:'GREEN'}]});if(s.entradas[0].resultado!=='GREEN')throw Error('Resultado remoto perdido');});
  check('Inclusões independentes',()=>{const s=conciliarTresVias(base,{...base,entradas:[aposta,novo]},{...base,entradas:[aposta,{...novo,id:'teste-outra'}]});if(s.entradas.length!==3)throw Error('Inclusão concorrente perdida');});
  check('Conflito bloqueado',()=>{try{conciliarTresVias(base,{...base,entradas:[{...aposta,resultado:'RED'}]},{...base,entradas:[{...aposta,resultado:'GREEN'}]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Conflito não bloqueado');});
+ check('Exclusão remota sem edição local',()=>{const s=conciliarTresVias(base,base,{...base,entradas:[]});if(s.entradas.length)throw Error('Exclusão remota não aplicada');});
+ check('Exclusão remota com edição local bloqueada',()=>{try{conciliarTresVias(base,{...base,entradas:[{...aposta,stake:3}]},{...base,entradas:[]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Conflito não bloqueado');});
  check('Exclusão bloqueada',()=>{try{conciliarTresVias(base,{...base,entradas:[]},base);}catch(e){if(e.message.includes('Exclusão detectada'))return;throw e;}throw Error('Exclusão não bloqueada');});
  check('Edições iguais em ambos os aparelhos',()=>{const edit={...aposta,resultado:'RED'};const s=conciliarTresVias(base,{...base,entradas:[edit]},{...base,entradas:[edit]});if(s.entradas[0].resultado!=='RED')throw Error('Edição idêntica perdida');});
  check('Conflito de valor bloqueado',()=>{try{conciliarTresVias(base,{...base,entradas:[{...aposta,stake:3}]},{...base,entradas:[{...aposta,stake:4}]});}catch(e){if(e.message.includes('Edição concorrente'))return;throw e;}throw Error('Conflito financeiro não bloqueado');});
