@@ -251,6 +251,22 @@ function modal(){
  }catch(e){info('RESTAURAÇÃO ISOLADA NÃO APROVADA: '+e.message+'. Estado principal não substituído.');}
  finally{localStorage.removeItem(key);}
  }));
+ actions.append(button('Simular migração financeira por JSON (somente leitura)',async()=>{
+  if(!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Ative a manutenção e aguarde operações pendentes.');
+  const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';
+  picker.onchange=async()=>{try{
+   const file=picker.files?.[0];if(!file)return;
+   const uid=currentUid,epoch=authEpoch;
+   const candidate=JSON.parse(await file.text());
+   const cloud=await consultarNuvem();
+   if(uid!==currentUid||epoch!==authEpoch||!maintenance())throw Error('Sessão ou manutenção alterada.');
+   if(!cloud.existe||cloud.revisao!==47||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Base original divergente ou revisão diferente de 47.');
+   if(!valid(candidate))throw Error('JSON inválido.');
+   const d=differences(candidate,cloud);
+   info('SIMULAÇÃO PRELIMINAR (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos e conteúdo ainda exigem validação financeira.');
+  }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
+  picker.click();
+ }));
  actions.append(button('Laboratório Firebase — consultar (isolado)',async()=>{try{const s=await consultarLaboratorio();info(s.existe?'LABORATÓRIO: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios. Última origem: '+(s.eventos.at(-1)?.origem||'nenhuma'):'LABORATÓRIO ainda não criado. Nenhum registro financeiro foi consultado ou alterado.');}catch(e){info('Laboratório indisponível: '+e.message+' (possível regra de acesso Firestore).');}}));
  actions.append(button('Laboratório Firebase — iniciar (isolado)',async()=>{if(!confirm('Criar laboratório separado no Firebase? NÃO altera apostas, casas, movimentações nem o documento financeiro. Confirma?'))return;try{const s=await executarLaboratorio('iniciar');info('Laboratório criado. Revisão '+s.revisao+'. Nenhuma aposta real alterada.');}catch(e){info('Laboratório não iniciado: '+e.message+'. Não altere regras de segurança sem revisão.');}}));
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
