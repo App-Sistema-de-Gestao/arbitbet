@@ -945,7 +945,7 @@
                 });
 
                 resumoMes.innerHTML =
-                    `P&L do mês: <span class="${totalMes >= 0 ? 'text-neonGreen' : 'text-neonRed'} font-bold">${formatPnlBRL(totalMes)}</span> • ${opsMes} entradas`;
+                    `P&L do mês: <span class="${totalMes >= 0 ? 'text-neonGreen' : 'text-neonRed'} font-bold">${formatPnlBRL(totalMes)}</span> • ${opsMes} ${opsMes===1?"Op":"Ops"}`;
 
                 grid.innerHTML = '';
 
@@ -979,7 +979,7 @@
                     cel.innerHTML = `
                         <div class="flex items-center justify-between text-[11px] mono">
                             <span class="font-bold">${dia}</span>
-                            ${qtd > 0 ? `<span class="text-[9px] px-1 rounded bg-white/10 text-slate-200">${qtd}x</span>` : ''}
+                            ${qtd > 0 ? `<span class="text-[9px] px-1 rounded bg-white/10 text-slate-200">${qtd} ${qtd===1?"Op":"Ops"}</span>` : ''}
                         </div>
                         ${textoPnl}
                     `;
