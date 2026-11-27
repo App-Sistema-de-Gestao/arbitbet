@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
+import { gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -323,6 +323,41 @@ function modal(){
   }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
   picker.click();
  }));
+ actions.append(button('Aplicar migração financeira — homologação',()=>{
+  if(config.projectId!=='arbitbet-homologacao')return info('GRAVAÇÃO BLOQUEADA: disponível somente no Firebase de homologação.');
+  if(!currentUid||!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Ative a manutenção e aguarde operações pendentes.');
+  const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';
+  const uid=currentUid,epoch=authEpoch;
+  picker.onchange=async()=>{
+   if(!picker.files?.[0])return;
+   if(uid!==currentUid||epoch!==authEpoch||!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Sessão ou manutenção alterada.');
+   maintenanceBusy=true;
+   let iniciou=false;
+   try{
+    const candidate=JSON.parse(await picker.files[0].text());
+    const cloud=await consultarNuvem();
+    const conferir=()=>{if(uid!==currentUid||epoch!==authEpoch||!maintenance()||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Sessão, manutenção ou base local alterada.');};
+    if(!cloud.existe||cloud.revisao!==47||!valid(cloud)||!valid(candidate))throw Error('Base ou candidato inválido.');
+    conferir();
+    validateMigrationContent(cloud,candidate);validateMigrationBalances(cloud,candidate);
+    downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-homologacao-local');
+    downloadJson(cloud,'arbitbet-homologacao-nuvem');
+    if(!confirm('Confirme que os dois backups foram salvos e que os outros dispositivos estão desconectados.'))return;
+    if(prompt('Somente homologação: revisão 47 → 48; 6 casas, 50 entradas, 11 movimentações. Digite MIGRAR TESTE para autorizar.')!=='MIGRAR TESTE')return;
+    conferir();iniciou=true;
+    const result=await gravarMigracaoControlada({base:cloud,candidato:candidate,revisaoEsperada:47,uidEsperado:uid,confirmado:true,backupsConfirmados:true});
+    conferir();
+    window.arbitbetCloudBridge.replace(result.estado);
+    if(!sameState(window.arbitbetCloudBridge.get(),result.estado))throw Error('Verificação local falhou.');
+    remote={...result.estado,revisao:result.revisao,existe:true};
+    $('cloudLocal').textContent=resumo(result.estado);
+    $('cloudRemote').textContent=resumo(result.estado)+' · Revisão '+result.revisao;
+    info('HOMOLOGAÇÃO GRAVADA · revisão '+result.revisao+' · manutenção mantida para auditoria.');
+   }catch(e){info((iniciou?'Confira a nuvem antes de repetir. ':'Migração bloqueada. ')+e.message);}
+   finally{maintenanceBusy=false;}
+  };
+  picker.click();
+ }));
  actions.append(button('Laboratório Firebase — consultar (isolado)',async()=>{try{const s=await consultarLaboratorio();info(s.existe?'LABORATÓRIO: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios. Última origem: '+(s.eventos.at(-1)?.origem||'nenhuma'):'LABORATÓRIO ainda não criado. Nenhum registro financeiro foi consultado ou alterado.');}catch(e){info('Laboratório indisponível: '+e.message+' (possível regra de acesso Firestore).');}}));
  actions.append(button('Laboratório Firebase — iniciar (isolado)',async()=>{if(!confirm('Criar laboratório separado no Firebase? NÃO altera apostas, casas, movimentações nem o documento financeiro. Confirma?'))return;try{const s=await executarLaboratorio('iniciar');info('Laboratório criado. Revisão '+s.revisao+'. Nenhuma aposta real alterada.');}catch(e){info('Laboratório não iniciado: '+e.message+'. Não altere regras de segurança sem revisão.');}}));
  actions.append(button('Laboratório — evento fictício neste aparelho',async()=>{if(!confirm('Registrar evento FICTÍCIO no documento isolado do laboratório? Nenhuma aposta ou saldo será alterado.'))return;try{const origem=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)?'celular':'computador';const s=await executarLaboratorio(origem);info('Evento fictício salvo no laboratório ('+origem+'). Revisão '+s.revisao+'. Verifique no outro aparelho pelo botão consultar.');}catch(e){info('Evento de laboratório não salvo: '+e.message);}}));
@@ -416,7 +451,7 @@ function modal(){
  for(const el of [...actions.children]){
   if(el===advanced)continue;
   const t=el.textContent||'';
-  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Simular migração|Aplicar migração|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
  }
  setActions(false);
 }
