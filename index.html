@@ -1261,7 +1261,7 @@
                 };
                 const editId=document.getElementById("casaEditId").value;
                 const anterior=estado.casas.find(c=>c.id===editId);
-                if(anterior){Object.assign(anterior,{nome:novaCasa.nome,conta:novaCasa.conta,bancaInicial:novaCasa.bancaInicial});}else estado.casas.push(novaCasa);
+                if(anterior){Object.assign(anterior,{nome:novaCasa.nome,conta:novaCasa.conta,bancaInicial:novaCasa.bancaInicial});}else {const deposito=novaCasa.bancaInicial;if(deposito>0){estado.movimentacoes.push({id:'dep-inicial-'+novaCasa.id,tipo:'DEPOSITO',casaId:novaCasa.id,valor:deposito,data:dataLocal(),obs:'Depósito inicial no cadastro'});novaCasa.bancaInicial=0;}estado.casas.push(novaCasa);}
                 salvarEstado();
                 renderizarTudo();
                 fecharModal('modalCasa');
