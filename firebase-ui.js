@@ -323,8 +323,8 @@ function modal(){
   }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
   picker.click();
  }));
- actions.append(button('Aplicar migração financeira — homologação',()=>{
-  if(config.projectId!=='arbitbet-homologacao')return info('GRAVAÇÃO BLOQUEADA: disponível somente no Firebase de homologação.');
+ actions.append(button('Aplicar migração financeira — definitiva',()=>{
+  if(config.projectId!=='arbitbet-v2')return info('GRAVAÇÃO BLOQUEADA: projeto oficial obrigatório.');
   if(!currentUid||!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Ative a manutenção e aguarde operações pendentes.');
   const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';
   const uid=currentUid,epoch=authEpoch;
@@ -340,10 +340,10 @@ function modal(){
     if(!cloud.existe||cloud.revisao!==47||!valid(cloud)||!valid(candidate))throw Error('Base ou candidato inválido.');
     conferir();
     validateMigrationContent(cloud,candidate);validateMigrationBalances(cloud,candidate);
-    downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-homologacao-local');
-    downloadJson(cloud,'arbitbet-homologacao-nuvem');
+    downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-definitivo-local');
+    downloadJson(cloud,'arbitbet-definitivo-nuvem');
     if(!confirm('Confirme que os dois backups foram salvos e que os outros dispositivos estão desconectados.'))return;
-    if(prompt('Somente homologação: revisão 47 → 48; 6 casas, 50 entradas, 11 movimentações. Digite MIGRAR TESTE para autorizar.')!=='MIGRAR TESTE')return;
+    if(prompt('ATENÇÃO: gravação DEFINITIVA no Firebase oficial. Revisão 47 → 48; patrimônio R$ 36,80. Digite MIGRAR DEFINITIVO para autorizar.')!=='MIGRAR DEFINITIVO')return;
     conferir();iniciou=true;
     const result=await gravarMigracaoControlada({base:cloud,candidato:candidate,revisaoEsperada:47,uidEsperado:uid,confirmado:true,backupsConfirmados:true});
     conferir();
@@ -352,7 +352,7 @@ function modal(){
     remote={...result.estado,revisao:result.revisao,existe:true};
     $('cloudLocal').textContent=resumo(result.estado);
     $('cloudRemote').textContent=resumo(result.estado)+' · Revisão '+result.revisao;
-    info('HOMOLOGAÇÃO GRAVADA · revisão '+result.revisao+' · manutenção mantida para auditoria.');
+    info('MIGRAÇÃO DEFINITIVA GRAVADA · revisão '+result.revisao+' · manutenção mantida para auditoria.');
    }catch(e){info((iniciou?'Confira a nuvem antes de repetir. ':'Migração bloqueada. ')+e.message);}
    finally{maintenanceBusy=false;}
   };
