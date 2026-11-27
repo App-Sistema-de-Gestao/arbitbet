@@ -2,7 +2,7 @@
 // Não contém credenciais, não executa login ou gravação automaticamente.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, getDocFromServer, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 let auth, db;
 const pathFor = uid => doc(db, 'users', uid, 'state', 'current');
@@ -426,4 +426,132 @@ export async function enviarEventosLaboratorio(eventos){
   const next={...old,revisao:old.revisao+1,eventos:lista,atualizadoEm:new Date().toISOString()};
   tx.set(ref,next);return next;
  });
+}
+
+
+// Primitiva de migração: ainda não conectada à interface.
+// O chamador deve validar o conteúdo autorizado e confirmar backups antes de invocar.
+
+// Shared migration checks, scoped to avoid collisions with sync helpers.
+function conferirMigracaoFinanceira(base,candidato){
+ const valid=s=>s&&Array.isArray(s.casas)&&Array.isArray(s.entradas)&&Array.isArray(s.movimentacoes);
+ function canonical(value){
+ if(Array.isArray(value))return value.map(canonical);
+ if(value && typeof value==='object')return Object.fromEntries(Object.keys(value).sort().filter(k=>value[k]!==undefined).map(k=>[k,canonical(value[k])]));
+ return value;
+}
+const stable=value=>JSON.stringify(canonical(value));
+function differences(a,b){
+ if(!valid(a)||!valid(b))throw Error('Dados inválidos para comparação.');
+ const result={};
+ for(const field of ['casas','entradas','movimentacoes']){
+  const index=items=>{const m=new Map();for(const item of items){if(!item?.id||m.has(String(item.id)))throw Error('ID ausente ou repetido em '+field);m.set(String(item.id),item);}return m;};
+  const local=index(a[field]),cloud=index(b[field]);
+  result[field]={apenasLocal:[...local.keys()].filter(id=>!cloud.has(id)),apenasNuvem:[...cloud.keys()].filter(id=>!local.has(id)),divergentes:[...local.keys()].filter(id=>cloud.has(id)&&stable(local.get(id))!==stable(cloud.get(id)))};
+ }
+ return result;
+}
+const sameState=(a,b)=>Object.values(differences(a,b)).every(x=>!x.apenasLocal.length&&!x.apenasNuvem.length&&!x.divergentes.length);
+
+ function migrationBalances(s){
+ const cents=n=>{const v=Number(n);if(!Number.isFinite(v))throw Error('Valor financeiro inválido.');return Math.round(v*100);};
+ const ids=new Set(s.casas.map(c=>c.id));
+ if([...s.entradas,...s.movimentacoes].some(x=>!ids.has(x.casaId)))throw Error('Registro sem casa válida.');
+ return s.casas.map(c=>{
+ let total=cents(c.bancaInicial||0),reserved=0,dep=0,pnl=0;
+ for(const e of s.entradas.filter(x=>x.casaId===c.id)){
+ const stake=cents(e.stake||0);let p=0;
+ if(e.resultado==='PENDENTE')reserved+=stake;
+ else if(e.resultado==='CASHOUT')p=cents(e.retornoRecebido||0)-stake;
+ else if(e.resultado==='GREEN')p=e.retornoRecebido!=null&&e.retornoRecebido!==''&&Number.isFinite(Number(e.retornoRecebido))?cents(e.retornoRecebido)-stake:cents(Number(e.stake||0)*((Number(e.odd)||1)-1));
+ else if(!['ANULADA','REEMBOLSO'].includes(e.resultado))p=-stake;
+ pnl+=p;
+ }
+ for(const m of s.movimentacoes.filter(x=>x.casaId===c.id)){const v=cents(m.valor);total+=m.tipo==='SAQUE'?-v:v;if(m.tipo==='DEPOSITO')dep+=v;}
+ total+=pnl;return {id:c.id,total,reserved,available:total-reserved,dep,pnl};
+ });
+}
+function validateMigrationBalances(before,after){
+ const a=migrationBalances(before),b=migrationBalances(after);
+ if(a.length!==6||b.length!==6||after.entradas.length!==50||after.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
+ for(const x of a){const y=b.find(z=>z.id===x.id);if(!y||['total','reserved','available'].some(k=>x[k]!==y[k]))throw Error('Saldo individual divergente: '+x.id);}
+ const sum=(rows,k)=>rows.reduce((n,x)=>n+x[k],0);
+ if(sum(a,'dep')!==13000||sum(b,'dep')!==14000||sum(b,'total')!==3680||sum(b,'reserved')!==1000||sum(b,'available')!==2680||sum(b,'pnl')!==-10517)throw Error('Totais financeiros inesperados.');
+ return b;
+}
+function validateMigrationContent(before,after){
+ const fields=['casas','entradas','movimentacoes'];
+ if(!valid(before)||!valid(after))throw Error('Estrutura inválida.');
+ for(const s of [before,after])for(const k of fields){
+  if(s[k].some(x=>!x||typeof x.id!=='string'||!x.id.trim())||new Set(s[k].map(x=>x.id)).size!==s[k].length)throw Error('ID inválido ou duplicado.');
+ }
+ if(before.casas.length!==6||before.entradas.length!==48||before.movimentacoes.length!==12)throw Error('Base inesperada.');
+ const d=differences(after,before);
+ const shape=(k,a,b,c)=>d[k].apenasLocal.length===a&&d[k].apenasNuvem.length===b&&d[k].divergentes.length===c;
+ if(!shape('casas',0,0,1)||!shape('entradas',2,0,1)||!shape('movimentacoes',1,2,0))throw Error('Alterações extras ou ausentes.');
+ const get=(s,k,id)=>s[k].find(x=>x.id===id);
+ const eq=(a,b)=>{if(stable(a)!==stable(b))throw Error('Conteúdo não autorizado.');};
+ const id=d.casas.divergentes[0],c=get(before,'casas',id);
+ if(c.bancaInicial!==10)throw Error('Banca inicial inesperada.');
+ eq(get(after,'casas',id),{...c,bancaInicial:0});
+ const dep=get(after,'movimentacoes',d.movimentacoes.apenasLocal[0]);
+ eq(dep,{id:'dep-inicial-'+id,casaId:id,data:'2026-11-26',tipo:'DEPOSITO',valor:10,obs:'Reclassificação da banca inicial'});
+ const removed=d.movimentacoes.apenasNuvem.map(id=>get(before,'movimentacoes',id));
+ eq(removed.map(m=>m.valor).sort((a,b)=>a-b),[0.16,2.73]);
+ for(const m of removed){
+  if(m.tipo!=='RODADAS_GRATIS'||typeof m.obs!=='string'||/ajuste|não comprovado/i.test(m.obs))throw Error('Movimento não elegível.');
+  eq(get(after,'entradas',m.id),{id:m.id,casaId:m.casaId,data:m.data,mercado:m.obs,categoria:'RODADAS_GRATIS',resultado:'GREEN',stake:0,odd:null,retornoRecebido:m.valor,finalizadaEm:m.data});
+ }
+ const e=get(before,'entradas',d.entradas.divergentes[0]);
+ if(e.casaId!==id||e.categoria!=='AVULSA'||e.resultado!=='GREEN'||e.stake!==2||e.odd!==2||e.retornoRecebido!==2.8||e.mercado!=='Bônus rodadas grátis')throw Error('Bônus inesperado.');
+ eq(get(after,'entradas',e.id),{...e,categoria:'RODADAS_GRATIS',stake:0,odd:null,retornoRecebido:0.8});
+ return true;
+}
+
+ validateMigrationContent(base,candidato);
+ validateMigrationBalances(base,candidato);
+}
+
+export async function gravarMigracaoControlada({base, candidato, revisaoEsperada, uidEsperado, confirmado, backupsConfirmados}) {
+  if(confirmado!==true||backupsConfirmados!==true)throw Error('Confirmação e backups obrigatórios.');
+  if(revisaoEsperada!==47||typeof uidEsperado!=='string'||!uidEsperado)throw Error('Base ou conta inesperada.');
+  const original=structuredClone(base), destino=structuredClone(candidato);
+  const campos=['casas','entradas','movimentacoes'];
+  const canon=x=>Array.isArray(x)?x.map(canon):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,canon(x[k])])):x;
+  const normalizar=s=>{
+    validarEstado(s);
+    return JSON.stringify(campos.map(k=>{
+      const ids=new Set();
+      for(const x of s[k]){
+        if(!x||typeof x.id!=='string'||!x.id.trim()||ids.has(x.id))throw Error('ID inválido ou duplicado.');
+        ids.add(x.id);
+      }
+      return [...s[k]].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(canon);
+    }));
+  };
+  const originalCanon=normalizar(original), destinoCanon=normalizar(destino);
+  const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
+  if(await hash(originalCanon)!=='9c6bff5e8aecf09bbe354117a93ab952c4ed0e9e5a2f8e6b3723e4d159012aef'||await hash(destinoCanon)!=='aff7ef75d365b1e28b9f63c7c74eb30dd6621aff4d8afb1b0ac0894b91e9ceca')throw Error('Arquivo diferente da base ou do candidato autorizado.');
+  conferirMigracaoFinanceira(original,destino);
+  if(originalCanon===destinoCanon)throw Error('Migração sem alterações.');
+  if(original.casas.length!==6||original.entradas.length!==48||original.movimentacoes.length!==12||destino.casas.length!==6||destino.entradas.length!==50||destino.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
+  const conferirConta=()=>{if(db.app.options.projectId!=='arbitbet-v2'||usuarioAtual().uid!==uidEsperado)throw Error('Conta alterada.');};
+  conferirConta();
+  const ref=pathFor(uidEsperado);
+  const revisao=await runTransaction(db,async tx=>{
+    conferirConta();
+    const snap=await tx.get(ref);
+    conferirConta();
+    if(!snap.exists()||snap.data().revisao!==revisaoEsperada||normalizar(snap.data())!==originalCanon)throw Error('Base remota alterada. Migração bloqueada.');
+    tx.update(ref,{revisao:revisaoEsperada+1,atualizadoEm:new Date().toISOString(),casas:destino.casas,entradas:destino.entradas,movimentacoes:destino.movimentacoes});
+    return revisaoEsperada+1;
+  });
+  // Uma falha daqui em diante não significa que a transação foi revertida.
+  try{
+    conferirConta();
+    const snap=await getDocFromServer(ref);
+    conferirConta();
+    if(!snap.exists()||snap.data().revisao!==revisao||normalizar(snap.data())!==destinoCanon)throw Error('Estado posterior divergente.');
+  }catch(e){throw Error('Gravação retornou revisão '+revisao+'; verificação posterior falhou. Consulte a nuvem antes de qualquer nova tentativa. '+e.message);}
+  return {revisao,estado:destino};
 }

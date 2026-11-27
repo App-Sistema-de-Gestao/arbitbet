@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
+import { gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
@@ -189,6 +189,60 @@ function info(t){$('cloudInfo').textContent=t;}
 function setActions(enabled){['cloudDownload','cloudMerge'].forEach(id=>{const el=$(id);if(el)el.disabled=!enabled;});}
 function downloadJson(s, prefix){const a=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({...s,exportadoEm:new Date().toISOString()},null,2)],{type:'application/json'}));a.href=url;a.download=prefix+'-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
 function resumo(s){const dep=(s.movimentacoes||[]).filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+Number(m.valor||0),0);return counts(s)+' · Depósitos R$ '+dep.toFixed(2).replace('.',',');}
+function migrationBalances(s){
+ const cents=n=>{const v=Number(n);if(!Number.isFinite(v))throw Error('Valor financeiro inválido.');return Math.round(v*100);};
+ const ids=new Set(s.casas.map(c=>c.id));
+ if([...s.entradas,...s.movimentacoes].some(x=>!ids.has(x.casaId)))throw Error('Registro sem casa válida.');
+ return s.casas.map(c=>{
+ let total=cents(c.bancaInicial||0),reserved=0,dep=0,pnl=0;
+ for(const e of s.entradas.filter(x=>x.casaId===c.id)){
+ const stake=cents(e.stake||0);let p=0;
+ if(e.resultado==='PENDENTE')reserved+=stake;
+ else if(e.resultado==='CASHOUT')p=cents(e.retornoRecebido||0)-stake;
+ else if(e.resultado==='GREEN')p=e.retornoRecebido!=null&&e.retornoRecebido!==''&&Number.isFinite(Number(e.retornoRecebido))?cents(e.retornoRecebido)-stake:cents(Number(e.stake||0)*((Number(e.odd)||1)-1));
+ else if(!['ANULADA','REEMBOLSO'].includes(e.resultado))p=-stake;
+ pnl+=p;
+ }
+ for(const m of s.movimentacoes.filter(x=>x.casaId===c.id)){const v=cents(m.valor);total+=m.tipo==='SAQUE'?-v:v;if(m.tipo==='DEPOSITO')dep+=v;}
+ total+=pnl;return {id:c.id,total,reserved,available:total-reserved,dep,pnl};
+ });
+}
+function validateMigrationBalances(before,after){
+ const a=migrationBalances(before),b=migrationBalances(after);
+ if(a.length!==6||b.length!==6||after.entradas.length!==50||after.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
+ for(const x of a){const y=b.find(z=>z.id===x.id);if(!y||['total','reserved','available'].some(k=>x[k]!==y[k]))throw Error('Saldo individual divergente: '+x.id);}
+ const sum=(rows,k)=>rows.reduce((n,x)=>n+x[k],0);
+ if(sum(a,'dep')!==13000||sum(b,'dep')!==14000||sum(b,'total')!==3680||sum(b,'reserved')!==1000||sum(b,'available')!==2680||sum(b,'pnl')!==-10517)throw Error('Totais financeiros inesperados.');
+ return b;
+}
+function validateMigrationContent(before,after){
+ const fields=['casas','entradas','movimentacoes'];
+ if(!valid(before)||!valid(after))throw Error('Estrutura inválida.');
+ for(const s of [before,after])for(const k of fields){
+  if(s[k].some(x=>!x||typeof x.id!=='string'||!x.id.trim())||new Set(s[k].map(x=>x.id)).size!==s[k].length)throw Error('ID inválido ou duplicado.');
+ }
+ if(before.casas.length!==6||before.entradas.length!==48||before.movimentacoes.length!==12)throw Error('Base inesperada.');
+ const d=differences(after,before);
+ const shape=(k,a,b,c)=>d[k].apenasLocal.length===a&&d[k].apenasNuvem.length===b&&d[k].divergentes.length===c;
+ if(!shape('casas',0,0,1)||!shape('entradas',2,0,1)||!shape('movimentacoes',1,2,0))throw Error('Alterações extras ou ausentes.');
+ const get=(s,k,id)=>s[k].find(x=>x.id===id);
+ const eq=(a,b)=>{if(stable(a)!==stable(b))throw Error('Conteúdo não autorizado.');};
+ const id=d.casas.divergentes[0],c=get(before,'casas',id);
+ if(c.bancaInicial!==10)throw Error('Banca inicial inesperada.');
+ eq(get(after,'casas',id),{...c,bancaInicial:0});
+ const dep=get(after,'movimentacoes',d.movimentacoes.apenasLocal[0]);
+ eq(dep,{id:'dep-inicial-'+id,casaId:id,data:'2026-11-26',tipo:'DEPOSITO',valor:10,obs:'Reclassificação da banca inicial'});
+ const removed=d.movimentacoes.apenasNuvem.map(id=>get(before,'movimentacoes',id));
+ eq(removed.map(m=>m.valor).sort((a,b)=>a-b),[0.16,2.73]);
+ for(const m of removed){
+  if(m.tipo!=='RODADAS_GRATIS'||typeof m.obs!=='string'||/ajuste|não comprovado/i.test(m.obs))throw Error('Movimento não elegível.');
+  eq(get(after,'entradas',m.id),{id:m.id,casaId:m.casaId,data:m.data,mercado:m.obs,categoria:'RODADAS_GRATIS',resultado:'GREEN',stake:0,odd:null,retornoRecebido:m.valor,finalizadaEm:m.data});
+ }
+ const e=get(before,'entradas',d.entradas.divergentes[0]);
+ if(e.casaId!==id||e.categoria!=='AVULSA'||e.resultado!=='GREEN'||e.stake!==2||e.odd!==2||e.retornoRecebido!==2.8||e.mercado!=='Bônus rodadas grátis')throw Error('Bônus inesperado.');
+ eq(get(after,'entradas',e.id),{...e,categoria:'RODADAS_GRATIS',stake:0,odd:null,retornoRecebido:0.8});
+ return true;
+}
 function modal(){
  const box=document.createElement('div');box.id='cloudOverlay';box.className='fixed inset-0 z-[100] hidden items-center justify-center bg-black/85 p-4';
  box.innerHTML=`<div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-emerald-500/50 bg-[#12161f] p-5 space-y-4 text-white">
@@ -250,6 +304,59 @@ function modal(){
   info('RESTAURAÇÃO ISOLADA APROVADA · revisão '+cloud.revisao+' · '+resumo(recuperado)+' · '+(sameState(antes,recuperado)?'navegador e nuvem idênticos':'ATENÇÃO: navegador divergente')+'. Cópia temporária excluída; dados reais não substituídos.');
  }catch(e){info('RESTAURAÇÃO ISOLADA NÃO APROVADA: '+e.message+'. Estado principal não substituído.');}
  finally{localStorage.removeItem(key);}
+ }));
+ actions.append(button('Simular migração financeira por JSON (somente leitura)',async()=>{
+  if(!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Ative a manutenção e aguarde operações pendentes.');
+  const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';
+  picker.onchange=async()=>{try{
+   const file=picker.files?.[0];if(!file)return;
+   const uid=currentUid,epoch=authEpoch;
+   const candidate=JSON.parse(await file.text());
+   const cloud=await consultarNuvem();
+   if(uid!==currentUid||epoch!==authEpoch||!maintenance())throw Error('Sessão ou manutenção alterada.');
+   if(!cloud.existe||cloud.revisao!==47||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Base original divergente ou revisão diferente de 47.');
+   if(!valid(candidate))throw Error('JSON inválido.');
+   const d=differences(candidate,cloud);
+   validateMigrationContent(cloud,candidate);
+   validateMigrationBalances(cloud,candidate);
+   info('SIMULAÇÃO FINANCEIRA VALIDADA (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos e estrutura das alterações conferidos; autorização específica ainda necessária.');
+  }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
+  picker.click();
+ }));
+ actions.append(button('Aplicar migração financeira — definitiva',()=>{
+  if(config.projectId!=='arbitbet-v2')return info('GRAVAÇÃO BLOQUEADA: projeto oficial obrigatório.');
+  if(!currentUid||!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Ative a manutenção e aguarde operações pendentes.');
+  const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';
+  const uid=currentUid,epoch=authEpoch;
+  picker.onchange=async()=>{
+   if(!picker.files?.[0])return;
+   if(uid!==currentUid||epoch!==authEpoch||!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Sessão ou manutenção alterada.');
+   maintenanceBusy=true;
+   let iniciou=false;
+   try{
+    const candidate=JSON.parse(await picker.files[0].text());
+    const cloud=await consultarNuvem();
+    const conferir=()=>{if(uid!==currentUid||epoch!==authEpoch||!maintenance()||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Sessão, manutenção ou base local alterada.');};
+    if(!cloud.existe||cloud.revisao!==47||!valid(cloud)||!valid(candidate))throw Error('Base ou candidato inválido.');
+    conferir();
+    validateMigrationContent(cloud,candidate);validateMigrationBalances(cloud,candidate);
+    downloadJson(window.arbitbetCloudBridge.get(),'arbitbet-definitivo-local');
+    downloadJson(cloud,'arbitbet-definitivo-nuvem');
+    if(!confirm('Confirme que os dois backups foram salvos e que os outros dispositivos estão desconectados.'))return;
+    if(prompt('ATENÇÃO: gravação DEFINITIVA no Firebase oficial. Revisão 47 → 48; patrimônio R$ 36,80. Digite MIGRAR DEFINITIVO para autorizar.')!=='MIGRAR DEFINITIVO')return;
+    conferir();iniciou=true;
+    const result=await gravarMigracaoControlada({base:cloud,candidato:candidate,revisaoEsperada:47,uidEsperado:uid,confirmado:true,backupsConfirmados:true});
+    conferir();
+    window.arbitbetCloudBridge.replace(result.estado);
+    if(!sameState(window.arbitbetCloudBridge.get(),result.estado))throw Error('Verificação local falhou.');
+    remote={...result.estado,revisao:result.revisao,existe:true};
+    $('cloudLocal').textContent=resumo(result.estado);
+    $('cloudRemote').textContent=resumo(result.estado)+' · Revisão '+result.revisao;
+    info('MIGRAÇÃO DEFINITIVA GRAVADA · revisão '+result.revisao+' · manutenção mantida para auditoria.');
+   }catch(e){info((iniciou?'Confira a nuvem antes de repetir. ':'Migração bloqueada. ')+e.message);}
+   finally{maintenanceBusy=false;}
+  };
+  picker.click();
  }));
  actions.append(button('Laboratório Firebase — consultar (isolado)',async()=>{try{const s=await consultarLaboratorio();info(s.existe?'LABORATÓRIO: revisão '+s.revisao+' · '+s.eventos.length+' eventos fictícios. Última origem: '+(s.eventos.at(-1)?.origem||'nenhuma'):'LABORATÓRIO ainda não criado. Nenhum registro financeiro foi consultado ou alterado.');}catch(e){info('Laboratório indisponível: '+e.message+' (possível regra de acesso Firestore).');}}));
  actions.append(button('Laboratório Firebase — iniciar (isolado)',async()=>{if(!confirm('Criar laboratório separado no Firebase? NÃO altera apostas, casas, movimentações nem o documento financeiro. Confirma?'))return;try{const s=await executarLaboratorio('iniciar');info('Laboratório criado. Revisão '+s.revisao+'. Nenhuma aposta real alterada.');}catch(e){info('Laboratório não iniciado: '+e.message+'. Não altere regras de segurança sem revisão.');}}));
@@ -344,7 +451,7 @@ function modal(){
  for(const el of [...actions.children]){
   if(el===advanced)continue;
   const t=el.textContent||'';
-  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Simular migração|Aplicar migração|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
  }
  setActions(false);
 }
