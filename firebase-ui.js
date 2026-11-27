@@ -189,6 +189,32 @@ function info(t){$('cloudInfo').textContent=t;}
 function setActions(enabled){['cloudDownload','cloudMerge'].forEach(id=>{const el=$(id);if(el)el.disabled=!enabled;});}
 function downloadJson(s, prefix){const a=document.createElement('a');const url=URL.createObjectURL(new Blob([JSON.stringify({...s,exportadoEm:new Date().toISOString()},null,2)],{type:'application/json'}));a.href=url;a.download=prefix+'-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
 function resumo(s){const dep=(s.movimentacoes||[]).filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+Number(m.valor||0),0);return counts(s)+' · Depósitos R$ '+dep.toFixed(2).replace('.',',');}
+function migrationBalances(s){
+ const cents=n=>{const v=Number(n);if(!Number.isFinite(v))throw Error('Valor financeiro inválido.');return Math.round(v*100);};
+ const ids=new Set(s.casas.map(c=>c.id));
+ if([...s.entradas,...s.movimentacoes].some(x=>!ids.has(x.casaId)))throw Error('Registro sem casa válida.');
+ return s.casas.map(c=>{
+ let total=cents(c.bancaInicial||0),reserved=0,dep=0,pnl=0;
+ for(const e of s.entradas.filter(x=>x.casaId===c.id)){
+ const stake=cents(e.stake||0);let p=0;
+ if(e.resultado==='PENDENTE')reserved+=stake;
+ else if(e.resultado==='CASHOUT')p=cents(e.retornoRecebido||0)-stake;
+ else if(e.resultado==='GREEN')p=Number.isFinite(Number(e.retornoRecebido))?cents(e.retornoRecebido)-stake:cents(Number(e.stake||0)*((Number(e.odd)||1)-1));
+ else if(!['ANULADA','REEMBOLSO'].includes(e.resultado))p=-stake;
+ pnl+=p;
+ }
+ for(const m of s.movimentacoes.filter(x=>x.casaId===c.id)){const v=cents(m.valor);total+=m.tipo==='SAQUE'?-v:v;if(m.tipo==='DEPOSITO')dep+=v;}
+ total+=pnl;return {id:c.id,total,reserved,available:total-reserved,dep,pnl};
+ });
+}
+function validateMigrationBalances(before,after){
+ const a=migrationBalances(before),b=migrationBalances(after);
+ if(a.length!==6||b.length!==6||after.entradas.length!==50||after.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
+ for(const x of a){const y=b.find(z=>z.id===x.id);if(!y||['total','reserved','available'].some(k=>x[k]!==y[k]))throw Error('Saldo individual divergente: '+x.id);}
+ const sum=(rows,k)=>rows.reduce((n,x)=>n+x[k],0);
+ if(sum(a,'dep')!==13000||sum(b,'dep')!==14000||sum(b,'total')!==3680||sum(b,'reserved')!==1000||sum(b,'available')!==2680||sum(b,'pnl')!==-10517)throw Error('Totais financeiros inesperados.');
+ return b;
+}
 function modal(){
  const box=document.createElement('div');box.id='cloudOverlay';box.className='fixed inset-0 z-[100] hidden items-center justify-center bg-black/85 p-4';
  box.innerHTML=`<div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-emerald-500/50 bg-[#12161f] p-5 space-y-4 text-white">
@@ -263,7 +289,8 @@ function modal(){
    if(!cloud.existe||cloud.revisao!==47||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Base original divergente ou revisão diferente de 47.');
    if(!valid(candidate))throw Error('JSON inválido.');
    const d=differences(candidate,cloud);
-   info('SIMULAÇÃO PRELIMINAR (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos e conteúdo ainda exigem validação financeira.');
+   validateMigrationBalances(cloud,candidate);
+   info('SIMULAÇÃO FINANCEIRA PRELIMINAR (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos individuais e totais conferidos; alterações de conteúdo ainda exigem validação estrita.');
   }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
   picker.click();
  }));
