@@ -1015,7 +1015,7 @@
                     acumLucro += calcularPnlEntrada(e);
                     pontosLucro.push(acumLucro);
                     pontosPatrimonio.push(bancaBase + acumLucro);
-                    labels.push(e.data ? e.data.slice(5) : `#${idx + 1}`);
+                    labels.push(e.data ? e.data.slice(8,10)+'/'+e.data.slice(5,7) : `#${idx + 1}`);
                 });
 
                 const padLeft = 56;
