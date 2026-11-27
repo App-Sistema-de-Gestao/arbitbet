@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { prepararBaseHomologacao, gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
+import { limparHomologacao, prepararBaseHomologacao, gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyC9l0JtcQr5lXY3VkzKn7UNS0jCJJA3BJo',
@@ -322,6 +322,22 @@ function modal(){
    info('SIMULAÇÃO FINANCEIRA VALIDADA (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos e estrutura das alterações conferidos; autorização específica ainda necessária.');
   }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
   picker.click();
+ }));
+ actions.append(button('Encerrar homologação — remover dados reais',async()=>{
+ if(config.projectId!=='arbitbet-homologacao'||email!=='homologacao@arbitbet.example'||!currentUid||!maintenance()||maintenanceBusy||syncBusy||uploadBusy)return info('Ambiente ou manutenção não autorizados.');
+ const uid=currentUid,epoch=authEpoch;maintenanceBusy=true;
+ try{
+ const cloud=await consultarNuvem();
+ const guard=()=>{if(uid!==currentUid||epoch!==authEpoch||!maintenance()||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Sessão ou base local alterada.');};
+ guard();if(!cloud.existe||cloud.revisao!==48)throw Error('Revisão inesperada.');
+ if(prompt('Somente homologação: substituir cópia real por base fictícia R$ 10,80. Confirme demais dispositivos de teste desconectados. Digite LIMPAR TESTE.')!=='LIMPAR TESTE')return;
+ guard();const estado=await limparHomologacao(uid,true);guard();
+ window.arbitbetCloudBridge.replace(estado);
+ if(!sameState(window.arbitbetCloudBridge.get(),estado))throw Error('Verificação local falhou.');
+ remote={...estado,existe:true,revisao:49};
+ $('cloudLocal').textContent=resumo(estado);$('cloudRemote').textContent=resumo(estado)+' · Revisão 49';
+ info('HOMOLOGAÇÃO LIMPA · revisão 49 · manutenção mantida.');
+ }catch(e){info('Limpeza interrompida: '+e.message+' Confira a nuvem antes de repetir.');}finally{maintenanceBusy=false;}
  }));
  actions.append(button('Preparar revisão 47 — somente homologação',()=>{
   if(config.projectId!=='arbitbet-homologacao'||email!=='homologacao@arbitbet.example'||!maintenance()||maintenanceBusy||syncBusy||uploadBusy)return info('Ambiente, conta ou manutenção não autorizados.');
