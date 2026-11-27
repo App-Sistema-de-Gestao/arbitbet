@@ -31,7 +31,11 @@ let syncTimer=null;
 let maintenanceBusy=false;
 const maintenanceKey=()=> 'arbitbet_maintenance_v1_'+currentUid;
 function maintenance(){return !!currentUid && localStorage.getItem(maintenanceKey())==='1';}
-function showMaintenance(){const b=$('cloudMaintenance');if(b)b.textContent=maintenance()?'Retomar sincronização':'Pausar sincronização (manutenção)';const p=$('cloudMaintenanceStatus');if(p)p.textContent=maintenance()?'MANUTENÇÃO ATIVA NESTE NAVEGADOR — login mantido; não faça lançamentos.':'Modo de manutenção desativado.';}
+function showMaintenance(){
+ const paused=maintenance();
+ for(const el of document.querySelectorAll('main, #modalMov, #modalEntrada, #modalCasa, #modalLiquidar'))el.inert=paused;
+ const banner=$('maintenanceBanner');if(banner)banner.hidden=!paused;
+const b=$('cloudMaintenance');if(b)b.textContent=maintenance()?'Retomar sincronização':'Pausar sincronização (manutenção)';const p=$('cloudMaintenanceStatus');if(p)p.textContent=maintenance()?'MANUTENÇÃO ATIVA NESTE NAVEGADOR — login mantido; não faça lançamentos.':'Modo de manutenção desativado.';}
 async function toggleMaintenance(){
  if(!currentUid||maintenanceBusy||syncBusy||uploadBusy)return info('Aguarde a operação atual e tente novamente.');
  maintenanceBusy=true;
@@ -91,7 +95,7 @@ function stopSafeSync(){
  syncBaseline=null;syncRevision=0;
 }
 async function safeSync(){
- if(maintenance()||maintenanceBusy||syncBusy||!email||!syncBaseline||autoUploadEnabled)return;
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy||!email||!syncBaseline||autoUploadEnabled)return;
  syncBusy=true;
  const token=syncRunToken,uid=currentUid;
  try{
@@ -151,10 +155,10 @@ function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(au
 function scheduleAutoWrite(){}
 async function autoCheck(){
  const epoch=authEpoch,uid=currentUid;
- if(!maintenance()&&!document.hidden && email){
+ if(!maintenance()&&!maintenanceBusy&&!uploadBusy&&!document.hidden && email){
   try{
    const data=await consultarNuvem();
-   if(epoch!==authEpoch||uid!==currentUid||maintenance())return;
+   if(epoch!==authEpoch||uid!==currentUid||maintenance()||maintenanceBusy||uploadBusy)return;
    if(!data.existe||!valid(data))return;
    const previous=remote?.revisao;
    remote=data;
@@ -384,6 +388,11 @@ function verificarRecuperacao38(local,cloud){
  return d;
 }
 async function recuperar38ComSeguranca(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await recuperar38ComSegurancaImpl();}finally{uploadBusy=false;}
+}
+async function recuperar38ComSegurancaImpl(){
  if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  if(!email)return info('Entre no Firebase antes da recuperação.');
  if(syncBusy||autoUploadEnabled)return info('Sincronização ou envio em andamento. Aguarde.');
@@ -414,6 +423,11 @@ async function recuperar38ComSeguranca(){
 }
 
 async function restoreCloud(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await restoreCloudImpl();}finally{uploadBusy=false;}
+}
+async function restoreCloudImpl(){
  if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  if(!remote||!valid(remote))return info('Nenhum backup válido encontrado na nuvem.');
@@ -437,6 +451,11 @@ async function diagnose(){
  }catch(e){info('Diagnóstico interrompido: '+e.message);}
 }
 async function conciliar99playUI(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await conciliar99playUIImpl();}finally{uploadBusy=false;}
+}
+async function conciliar99playUIImpl(){
  if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  if(autoUploadEnabled)return info('Desative o envio automático antes da conciliação.');
@@ -457,6 +476,11 @@ async function conciliar99playUI(){
  }catch(e){info('Conciliação não concluída: '+e.message);}
 }
 async function prepararBets365(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await prepararBets365Impl();}finally{uploadBusy=false;}
+}
+async function prepararBets365Impl(){
  if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  try{
@@ -491,6 +515,11 @@ async function prepararBets365(){
 }
 
 async function mergeCloud(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await mergeCloudImpl();}finally{uploadBusy=false;}
+}
+async function mergeCloudImpl(){
  if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  const local=window.arbitbetCloudBridge.get();
@@ -506,6 +535,11 @@ async function mergeCloud(){
  }catch(e){info('MESCLAGEM NÃO CONCLUÍDA: '+e.message+' Nenhum registro local foi substituído.');}
 }
 async function uploadCloud(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await uploadCloudImpl();}finally{uploadBusy=false;}
+}
+async function uploadCloudImpl(){
  if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  const local=window.arbitbetCloudBridge.get();
@@ -525,6 +559,9 @@ function start(){
  if(!window.arbitbetCloudBridge)return;
  modal();
  const btn=button('☁ Nuvem',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
+ const banner=document.createElement('p');banner.id='maintenanceBanner';banner.hidden=true;banner.textContent='Manutenção financeira ativa. Abra Nuvem para consultar ou retomar.';banner.style.cssText='padding:12px;background:#78350f;color:white;text-align:center';document.body.prepend(banner);
+ document.addEventListener('click',e=>{if(maintenance()&&!e.target.closest('#cloudOverlay,#btnCloud,#btnSair,#loginOverlay')){e.preventDefault();e.stopImmediatePropagation();}},true);
+ for(const type of ['submit','change','drop'])document.addEventListener(type,e=>{if(maintenance()&&!e.target.closest('#cloudOverlay,#loginOverlay')){e.preventDefault();e.stopImmediatePropagation();}},true);
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
  const gate=$('loginOverlay'), form=$('formLogin'), status=$('loginErro'), ownerKey='arbitbet_financial_owner_v1';
  const lock=()=>{gate.style.display='flex';$('cloudOverlay').classList.add('hidden');$('cloudOverlay').classList.remove('flex');};
@@ -575,7 +612,7 @@ function start(){
   }catch(e){if(active()){status.textContent='Acesso aguardando conferência: '+e.message;retry.classList.remove('hidden');retry.onclick=()=>{if(active())void prepare(user,epoch);};}}
  }
  window.arbitbetExcluirEntrada=async id=>{
-  if(maintenance()||maintenanceBusy||!currentUid||!syncBaseline||syncBusy)throw Error('Sincronização indisponível ou em andamento. Tente novamente.');
+  if(maintenance()||maintenanceBusy||uploadBusy||!currentUid||!syncBaseline||syncBusy)throw Error('Sincronização indisponível ou em andamento. Tente novamente.');
   const uid=currentUid,epoch=authEpoch,local=window.arbitbetCloudBridge.get();
   if(!sameState(local,syncBaseline))throw Error('Aguarde a sincronização das alterações pendentes.');
   const entrada=local.entradas.find(x=>x.id===id);if(!entrada)throw Error('Entrada não encontrada.');
