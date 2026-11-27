@@ -28,6 +28,29 @@ let syncRevision=0;
 let syncBusy=false;
 let syncRunToken=0;
 let syncTimer=null;
+let maintenanceBusy=false;
+const maintenanceKey=()=> 'arbitbet_maintenance_v1_'+currentUid;
+function maintenance(){return !!currentUid && localStorage.getItem(maintenanceKey())==='1';}
+function showMaintenance(){
+ const paused=maintenance();
+ for(const el of document.querySelectorAll('main, #modalMov, #modalEntrada, #modalCasa, #modalLiquidar'))el.inert=paused;
+ const banner=$('maintenanceBanner');if(banner)banner.hidden=!paused;
+const b=$('cloudMaintenance');if(b)b.textContent=maintenance()?'Retomar sincronização':'Pausar sincronização (manutenção)';const p=$('cloudMaintenanceStatus');if(p)p.textContent=maintenance()?'MANUTENÇÃO ATIVA NESTE NAVEGADOR — login mantido; não faça lançamentos.':'Modo de manutenção desativado.';}
+async function toggleMaintenance(){
+ if(!currentUid||maintenanceBusy||syncBusy||uploadBusy)return info('Aguarde a operação atual e tente novamente.');
+ maintenanceBusy=true;
+ try{
+ if(!maintenance()){
+  if(!confirm('Pausar a sincronização neste navegador, mantendo o login? Não faça lançamentos durante a manutenção.'))return;
+  localStorage.setItem(maintenanceKey(),'1');stopSafeSync();stopAuto();showMaintenance();info('Sincronização pausada neste navegador.');
+ }else{
+  const uid=currentUid,epoch=authEpoch;const cloud=await consultarNuvem();
+  if(uid!==currentUid||epoch!==authEpoch)return;
+  if(!cloud.existe||!valid(cloud)||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Dados locais e remotos diferentes. A pausa foi mantida.');
+  localStorage.removeItem(maintenanceKey());remote=cloud;showMaintenance();startSafeSync(cloud);startAuto();
+ }
+ }catch(e){info('Manutenção: '+e.message);}finally{maintenanceBusy=false;}
+}
 let labTimer=null,labLastRevision=null,labPolling=false;
 let labFinanceCount=null;
 function stopLabWatch(){if(labTimer)clearInterval(labTimer);labTimer=null;labLastRevision=null;labFinanceCount=null;}
@@ -72,7 +95,7 @@ function stopSafeSync(){
  syncBaseline=null;syncRevision=0;
 }
 async function safeSync(){
- if(syncBusy||!email||!syncBaseline||autoUploadEnabled)return;
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy||!email||!syncBaseline||autoUploadEnabled)return;
  syncBusy=true;
  const token=syncRunToken,uid=currentUid;
  try{
@@ -95,7 +118,7 @@ async function safeSync(){
 }
 function startSafeSync(data){
  stopSafeSync();
- if(!data?.existe||!valid(data))return;
+ if(maintenance()||!data?.existe||!valid(data))return;
  const local=window.arbitbetCloudBridge.get();
  if(!sameState(local,data)){
   info('Sincronização automática aguardando conciliação inicial. Use Diagnosticar diferenças; nenhum dado foi enviado.');
@@ -132,10 +155,10 @@ function stopAuto(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;}if(au
 function scheduleAutoWrite(){}
 async function autoCheck(){
  const epoch=authEpoch,uid=currentUid;
- if(!document.hidden && email){
+ if(!maintenance()&&!maintenanceBusy&&!uploadBusy&&!document.hidden && email){
   try{
    const data=await consultarNuvem();
-   if(epoch!==authEpoch||uid!==currentUid)return;
+   if(epoch!==authEpoch||uid!==currentUid||maintenance()||maintenanceBusy||uploadBusy)return;
    if(!data.existe||!valid(data))return;
    const previous=remote?.revisao;
    remote=data;
@@ -160,7 +183,7 @@ async function autoCheck(){
   }catch(e){info('Consulta automática indisponível: '+e.message);}
  }
 }
-function startAuto(){stopAuto();autoTimer=setInterval(autoCheck,30000);autoCheck();}
+function startAuto(){stopAuto();if(maintenance())return;autoTimer=setInterval(autoCheck,30000);autoCheck();}
 
 function info(t){$('cloudInfo').textContent=t;}
 function setActions(enabled){['cloudDownload','cloudMerge'].forEach(id=>{const el=$(id);if(el)el.disabled=!enabled;});}
@@ -184,6 +207,8 @@ function modal(){
  $('cloudClose').onclick=()=>box.classList.add('hidden');
  box.onclick=e=>{if(e.target===box)box.classList.add('hidden');};
  const actions=$('cloudActions');
+ const maintenanceButton=button('Pausar sincronização (manutenção)',toggleMaintenance);maintenanceButton.id='cloudMaintenance';actions.append(maintenanceButton);
+ const maintenanceStatus=document.createElement('p');maintenanceStatus.id='cloudMaintenanceStatus';maintenanceStatus.className='w-full text-xs text-amber-300';actions.append(maintenanceStatus);
  actions.append(button('Consultar nuvem', refresh));
  const restore=button('Restaurar da nuvem', restoreCloud);restore.id='cloudDownload';actions.append(restore);
  // Substituição integral da nuvem retirada da interface para evitar sobrescrita acidental.
@@ -282,7 +307,7 @@ function modal(){
    const baseAtiva=!!syncBaseline&&syncTimer!==null&&!autoUploadEnabled;
    const baseIgual=baseAtiva&&sameState(syncBaseline,cloud);
    const revisaoIgual=baseAtiva&&syncRevision===cloud.revisao;
-   const aprovado=iguais&&baseIgual&&revisaoIgual&&localDepois.entradas.length===38&&localDepois.casas.length===5&&localDepois.movimentacoes.length===12;
+   const aprovado=iguais&&baseIgual&&revisaoIgual;
    info((aprovado?'AUDITORIA FINANCEIRA APROVADA':'AUDITORIA FINANCEIRA REQUER CONFERÊNCIA')+' · navegador: '+resumo(localDepois)+' · nuvem: '+resumo(cloud)+' · revisão '+cloud.revisao+' · rotina ativa: '+(baseAtiva?'sim':'não')+' · base igual: '+(baseIgual?'sim':'não')+' · revisão da base igual: '+(revisaoIgual?'sim':'não')+' · '+diagnosticText(d)+'. Somente leitura; nenhum dado gravado.');
   }catch(e){info('AUDITORIA INTERROMPIDA: '+e.message+'. Nenhum dado gravado.');}
  }));
@@ -363,6 +388,12 @@ function verificarRecuperacao38(local,cloud){
  return d;
 }
 async function recuperar38ComSeguranca(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await recuperar38ComSegurancaImpl();}finally{uploadBusy=false;}
+}
+async function recuperar38ComSegurancaImpl(){
+ if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  if(!email)return info('Entre no Firebase antes da recuperação.');
  if(syncBusy||autoUploadEnabled)return info('Sincronização ou envio em andamento. Aguarde.');
  const local=window.arbitbetCloudBridge.get();
@@ -392,6 +423,12 @@ async function recuperar38ComSeguranca(){
 }
 
 async function restoreCloud(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await restoreCloudImpl();}finally{uploadBusy=false;}
+}
+async function restoreCloudImpl(){
+ if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  if(!remote||!valid(remote))return info('Nenhum backup válido encontrado na nuvem.');
  const local=window.arbitbetCloudBridge.get();
@@ -414,6 +451,12 @@ async function diagnose(){
  }catch(e){info('Diagnóstico interrompido: '+e.message);}
 }
 async function conciliar99playUI(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await conciliar99playUIImpl();}finally{uploadBusy=false;}
+}
+async function conciliar99playUIImpl(){
+ if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  if(autoUploadEnabled)return info('Desative o envio automático antes da conciliação.');
  const local=window.arbitbetCloudBridge.get();
@@ -433,6 +476,12 @@ async function conciliar99playUI(){
  }catch(e){info('Conciliação não concluída: '+e.message);}
 }
 async function prepararBets365(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await prepararBets365Impl();}finally{uploadBusy=false;}
+}
+async function prepararBets365Impl(){
+ if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  try{
   info('Conferindo pacote validado...');
@@ -466,6 +515,12 @@ async function prepararBets365(){
 }
 
 async function mergeCloud(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await mergeCloudImpl();}finally{uploadBusy=false;}
+}
+async function mergeCloudImpl(){
+ if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  const local=window.arbitbetCloudBridge.get();
  if(!valid(local))return info('Dados locais inválidos.');
@@ -480,6 +535,12 @@ async function mergeCloud(){
  }catch(e){info('MESCLAGEM NÃO CONCLUÍDA: '+e.message+' Nenhum registro local foi substituído.');}
 }
 async function uploadCloud(){
+ if(maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Operação indisponível durante manutenção ou outra gravação.');
+ uploadBusy=true;
+ try{return await uploadCloudImpl();}finally{uploadBusy=false;}
+}
+async function uploadCloudImpl(){
+ if(maintenance()||maintenanceBusy)return info('Operação bloqueada durante manutenção.');
  stopSafeSync();
  const local=window.arbitbetCloudBridge.get();
  if(!valid(local)||!local.casas.length)return info('Sem casas locais. Envio de estado vazio bloqueado.');
@@ -498,6 +559,9 @@ function start(){
  if(!window.arbitbetCloudBridge)return;
  modal();
  const btn=button('☁ Nuvem',()=>{const overlay=$('cloudOverlay');overlay.classList.remove('hidden');overlay.classList.add('flex');$('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());});
+ const banner=document.createElement('p');banner.id='maintenanceBanner';banner.hidden=true;banner.textContent='Manutenção financeira ativa. Abra Nuvem para consultar ou retomar.';banner.style.cssText='padding:12px;background:#78350f;color:white;text-align:center';document.body.prepend(banner);
+ document.addEventListener('click',e=>{if(maintenance()&&!e.target.closest('#cloudOverlay,#btnCloud,#btnSair,#loginOverlay')){e.preventDefault();e.stopImmediatePropagation();}},true);
+ for(const type of ['submit','change','drop'])document.addEventListener(type,e=>{if(maintenance()&&!e.target.closest('#cloudOverlay,#loginOverlay')){e.preventDefault();e.stopImmediatePropagation();}},true);
  btn.id='btnCloud';document.querySelector('.header-actions')?.prepend(btn);
  const gate=$('loginOverlay'), form=$('formLogin'), status=$('loginErro'), ownerKey='arbitbet_financial_owner_v1';
  const lock=()=>{gate.style.display='flex';$('cloudOverlay').classList.add('hidden');$('cloudOverlay').classList.remove('flex');};
@@ -507,7 +571,7 @@ function start(){
  $('loginMostrar').onclick=()=>{const p=$('loginSenha');p.type=p.type==='password'?'text':'password';$('loginMostrar').textContent=p.type==='password'?'Mostrar':'Ocultar';};
  $('loginTrocar').onclick=async()=>{try{await sair();}catch(e){status.textContent='Não foi possível sair. Tente novamente.';}};
  $('btnSair').onclick=async()=>{lock();stopSafeSync();stopAuto();stopLabWatch();try{await sair();}catch(e){status.textContent='Não foi possível sair. Tente novamente.';$('loginTrocar').classList.remove('hidden');}};
- form.onsubmit=async e=>{e.preventDefault();ready(false);status.textContent='Autenticando...';try{await entrar($('loginEmail').value.trim(),$('loginSenha').value);$('loginSenha').value='';}catch(e){status.textContent='Não foi possível entrar. Confira e-mail, senha e conexão.';ready(true);}};
+ form.onsubmit=async e=>{e.preventDefault();ready(false);status.textContent='Autenticando...';try{await entrar($('loginEmail').value.trim(),$('loginSenha').value);$('loginSenha').value='';}catch(e){status.textContent='Não foi possível entrar. Código Firebase: '+(typeof e?.code==='string' && /^[a-z0-9/_-]+$/i.test(e.code)?e.code:'erro-desconhecido');ready(true);}};
  $('loginRecuperar').onclick=async()=>{const field=$('loginEmail');if(!field.reportValidity())return;try{await recuperarSenha(field.value);status.textContent='Se a conta estiver cadastrada, confira seu e-mail para redefinir a senha.';}catch(e){status.textContent='Não foi possível solicitar a recuperação. Confira a conexão e tente novamente.';}};
  async function prepare(user,epoch){
   const active=()=>epoch===authEpoch&&currentUid===user.uid;
@@ -524,10 +588,11 @@ function start(){
     localStorage.setItem(ownerKey,user.uid);remote=cloud;
     $('cloudLocal').textContent=resumo(window.arbitbetCloudBridge.get());
     $('cloudRemote').textContent=resumo(cloud)+' · Revisão '+cloud.revisao;
-    setActions(true);startSafeSync(cloud);startAuto();startLabWatch();
+    setActions(true);showMaintenance();startSafeSync(cloud);startAuto();startLabWatch();
     gate.style.display='none';status.textContent='';restore.classList.add('hidden');retry.classList.add('hidden');
    }
-   if(empty){window.arbitbetCloudBridge.replace({casas:clone(data.casas),entradas:clone(data.entradas),movimentacoes:clone(data.movimentacoes)});unlock(data);return;}
+   if(maintenance()){unlock(data);return;}
+    if(empty){window.arbitbetCloudBridge.replace({casas:clone(data.casas),entradas:clone(data.entradas),movimentacoes:clone(data.movimentacoes)});unlock(data);return;}
    if(sameState(local,data)){unlock(data);return;}
    status.textContent='Dados locais diferentes da nuvem. Nenhum dado foi enviado. Local: '+resumo(local)+' | Nuvem: '+resumo(data)+'.';
    restore.classList.remove('hidden');
@@ -547,7 +612,7 @@ function start(){
   }catch(e){if(active()){status.textContent='Acesso aguardando conferência: '+e.message;retry.classList.remove('hidden');retry.onclick=()=>{if(active())void prepare(user,epoch);};}}
  }
  window.arbitbetExcluirEntrada=async id=>{
-  if(!currentUid||!syncBaseline||syncBusy)throw Error('Sincronização indisponível ou em andamento. Tente novamente.');
+  if(maintenance()||maintenanceBusy||uploadBusy||!currentUid||!syncBaseline||syncBusy)throw Error('Sincronização indisponível ou em andamento. Tente novamente.');
   const uid=currentUid,epoch=authEpoch,local=window.arbitbetCloudBridge.get();
   if(!sameState(local,syncBaseline))throw Error('Aguarde a sincronização das alterações pendentes.');
   const entrada=local.entradas.find(x=>x.id===id);if(!entrada)throw Error('Entrada não encontrada.');
@@ -565,7 +630,7 @@ function start(){
  try{configurarFirebase(config);observarUsuario(user=>{
   const epoch=++authEpoch;
   stopAuto();stopSafeSync();stopLabWatch();lock();
-  currentUid=user?.uid||null;email=user?.email||'';remote=null;lastAutoNotice='';
+  currentUid=user?.uid||null;email=user?.email||'';remote=null;lastAutoNotice='';showMaintenance();
   $('cloudLogin').classList.toggle('hidden',!!user);$('cloudLogged').classList.toggle('hidden',!user);
   $('cloudUser').textContent=user?'Conectado: '+email:'';setActions(false);
   restore.classList.add('hidden');retry.classList.add('hidden');
