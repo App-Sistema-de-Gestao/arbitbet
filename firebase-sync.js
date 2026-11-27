@@ -2,7 +2,7 @@
 // Não contém credenciais, não executa login ou gravação automaticamente.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, getDocFromServer, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 let auth, db;
 const pathFor = uid => doc(db, 'users', uid, 'state', 'current');
@@ -535,7 +535,7 @@ export async function gravarMigracaoControlada({base, candidato, revisaoEsperada
   conferirMigracaoFinanceira(original,destino);
   if(originalCanon===destinoCanon)throw Error('Migração sem alterações.');
   if(original.casas.length!==6||original.entradas.length!==48||original.movimentacoes.length!==12||destino.casas.length!==6||destino.entradas.length!==50||destino.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
-  const conferirConta=()=>{if(usuarioAtual().uid!==uidEsperado)throw Error('Conta alterada.');};
+  const conferirConta=()=>{if(db.app.options.projectId!=='arbitbet-v2'||usuarioAtual().uid!==uidEsperado)throw Error('Conta alterada.');};
   conferirConta();
   const ref=pathFor(uidEsperado);
   const revisao=await runTransaction(db,async tx=>{
@@ -549,7 +549,7 @@ export async function gravarMigracaoControlada({base, candidato, revisaoEsperada
   // Uma falha daqui em diante não significa que a transação foi revertida.
   try{
     conferirConta();
-    const snap=await getDoc(ref);
+    const snap=await getDocFromServer(ref);
     conferirConta();
     if(!snap.exists()||snap.data().revisao!==revisao||normalizar(snap.data())!==destinoCanon)throw Error('Estado posterior divergente.');
   }catch(e){throw Error('Gravação retornou revisão '+revisao+'; verificação posterior falhou. Consulte a nuvem antes de qualquer nova tentativa. '+e.message);}
