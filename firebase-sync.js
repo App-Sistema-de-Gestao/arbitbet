@@ -530,6 +530,8 @@ export async function gravarMigracaoControlada({base, candidato, revisaoEsperada
     }));
   };
   const originalCanon=normalizar(original), destinoCanon=normalizar(destino);
+  const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join('');
+  if(await hash(originalCanon)!=='9c6bff5e8aecf09bbe354117a93ab952c4ed0e9e5a2f8e6b3723e4d159012aef'||await hash(destinoCanon)!=='aff7ef75d365b1e28b9f63c7c74eb30dd6621aff4d8afb1b0ac0894b91e9ceca')throw Error('Arquivo diferente da base ou do candidato autorizado.');
   conferirMigracaoFinanceira(original,destino);
   if(originalCanon===destinoCanon)throw Error('Migração sem alterações.');
   if(original.casas.length!==6||original.entradas.length!==48||original.movimentacoes.length!==12||destino.casas.length!==6||destino.entradas.length!==50||destino.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
