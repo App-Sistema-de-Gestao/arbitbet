@@ -215,6 +215,34 @@ function validateMigrationBalances(before,after){
  if(sum(a,'dep')!==13000||sum(b,'dep')!==14000||sum(b,'total')!==3680||sum(b,'reserved')!==1000||sum(b,'available')!==2680||sum(b,'pnl')!==-10517)throw Error('Totais financeiros inesperados.');
  return b;
 }
+function validateMigrationContent(before,after){
+ const fields=['casas','entradas','movimentacoes'];
+ if(!valid(before)||!valid(after))throw Error('Estrutura inválida.');
+ for(const s of [before,after])for(const k of fields){
+  if(s[k].some(x=>!x||typeof x.id!=='string'||!x.id.trim())||new Set(s[k].map(x=>x.id)).size!==s[k].length)throw Error('ID inválido ou duplicado.');
+ }
+ if(before.casas.length!==6||before.entradas.length!==48||before.movimentacoes.length!==12)throw Error('Base inesperada.');
+ const d=differences(after,before);
+ const shape=(k,a,b,c)=>d[k].apenasLocal.length===a&&d[k].apenasNuvem.length===b&&d[k].divergentes.length===c;
+ if(!shape('casas',0,0,1)||!shape('entradas',2,0,1)||!shape('movimentacoes',1,2,0))throw Error('Alterações extras ou ausentes.');
+ const get=(s,k,id)=>s[k].find(x=>x.id===id);
+ const eq=(a,b)=>{if(stable(a)!==stable(b))throw Error('Conteúdo não autorizado.');};
+ const id=d.casas.divergentes[0],c=get(before,'casas',id);
+ if(c.bancaInicial!==10)throw Error('Banca inicial inesperada.');
+ eq(get(after,'casas',id),{...c,bancaInicial:0});
+ const dep=get(after,'movimentacoes',d.movimentacoes.apenasLocal[0]);
+ eq(dep,{id:'dep-inicial-'+id,casaId:id,data:'2026-11-26',tipo:'DEPOSITO',valor:10,obs:'Reclassificação da banca inicial'});
+ const removed=d.movimentacoes.apenasNuvem.map(id=>get(before,'movimentacoes',id));
+ eq(removed.map(m=>m.valor).sort((a,b)=>a-b),[0.16,2.73]);
+ for(const m of removed){
+  if(m.tipo!=='RODADAS_GRATIS'||typeof m.obs!=='string'||/ajuste|não comprovado/i.test(m.obs))throw Error('Movimento não elegível.');
+  eq(get(after,'entradas',m.id),{id:m.id,casaId:m.casaId,data:m.data,mercado:m.obs,categoria:'RODADAS_GRATIS',resultado:'GREEN',stake:0,odd:null,retornoRecebido:m.valor,finalizadaEm:m.data});
+ }
+ const e=get(before,'entradas',d.entradas.divergentes[0]);
+ if(e.casaId!==id||e.categoria!=='AVULSA'||e.resultado!=='GREEN'||e.stake!==2||e.odd!==2||e.retornoRecebido!==2.8||e.mercado!=='Bônus rodadas grátis')throw Error('Bônus inesperado.');
+ eq(get(after,'entradas',e.id),{...e,categoria:'RODADAS_GRATIS',stake:0,odd:null,retornoRecebido:0.8});
+ return true;
+}
 function modal(){
  const box=document.createElement('div');box.id='cloudOverlay';box.className='fixed inset-0 z-[100] hidden items-center justify-center bg-black/85 p-4';
  box.innerHTML=`<div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-emerald-500/50 bg-[#12161f] p-5 space-y-4 text-white">
@@ -289,8 +317,9 @@ function modal(){
    if(!cloud.existe||cloud.revisao!==47||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Base original divergente ou revisão diferente de 47.');
    if(!valid(candidate))throw Error('JSON inválido.');
    const d=differences(candidate,cloud);
+   validateMigrationContent(cloud,candidate);
    validateMigrationBalances(cloud,candidate);
-   info('SIMULAÇÃO FINANCEIRA PRELIMINAR (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos individuais e totais conferidos; alterações de conteúdo ainda exigem validação estrita.');
+   info('SIMULAÇÃO FINANCEIRA VALIDADA (sem gravação) · '+resumo(candidate)+' · '+diagnosticText(d)+'. Saldos e estrutura das alterações conferidos; autorização específica ainda necessária.');
   }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
   picker.click();
  }));
