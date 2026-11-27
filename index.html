@@ -420,7 +420,7 @@
     </div>
 
     <div id="loginOverlay" class="fixed inset-0 z-[90] bg-voidbg flex items-center justify-center p-5"><form id="formLogin" class="neon-card rounded-2xl p-6 w-full max-w-sm space-y-4"><h2 class="text-2xl font-bold text-neonGreen">Arbitbet</h2><p id="loginAjuda" class="text-sm text-slate-300">Crie uma senha para bloquear o acesso neste navegador.</p><input id="loginSenha" type="password" minlength="8" required autocomplete="current-password" placeholder="Senha (mínimo 8 caracteres)" class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-3 text-white"><button class="neon-btn w-full py-3 rounded-xl">Entrar / Configurar</button><p id="loginErro" class="text-xs text-neonRed"></p><p class="text-xs text-slate-400">Bloqueio local, não é autenticação de servidor. Para uso em múltiplos aparelhos, configure backend com login real.</p></form></div>
-<div id="modalMov" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><form id="formMov" class="neon-card rounded-2xl p-5 w-full max-w-md space-y-3"><h3 class="text-white font-bold">Registrar depósito ou saque</h3><label class="block text-xs">Movimentação<select id="movTipo" class="w-full bg-voidbg p-3 rounded-lg"><option value="DEPOSITO">Depósito</option><option value="SAQUE">Saque</option><option value="RODADAS_GRATIS">Rodadas Grátis</option></select></label><label class="block text-xs">Casa / Conta<select id="movCasa" required class="w-full bg-voidbg p-3 rounded-lg"></select></label><label class="block text-xs">Valor (R$)<input id="movValor" type="number" step="0.01" min="0.01" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Data<input id="movData" type="date" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Observação<input id="movObs" maxlength="160" class="w-full bg-voidbg p-3 rounded-lg"></label><div class="flex gap-2"><button type="button" id="fecharMov" class="bg-slate-700 rounded-lg p-3 flex-1">Cancelar</button><button class="neon-btn rounded-lg p-3 flex-1">Salvar</button></div></form></div>
+<div id="modalMov" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4"><form id="formMov" class="neon-card rounded-2xl p-5 w-full max-w-md space-y-3"><h3 class="text-white font-bold">Registrar depósito ou saque</h3><label class="block text-xs">Movimentação<select id="movTipo" class="w-full bg-voidbg p-3 rounded-lg"><option value="DEPOSITO">Depósito</option><option value="SAQUE">Saque</option></select></label><label class="block text-xs">Casa / Conta<select id="movCasa" required class="w-full bg-voidbg p-3 rounded-lg"></select></label><label class="block text-xs">Valor (R$)<input id="movValor" type="number" step="0.01" min="0.01" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Data<input id="movData" type="date" required class="w-full bg-voidbg p-3 rounded-lg"></label><label class="block text-xs">Observação<input id="movObs" maxlength="160" class="w-full bg-voidbg p-3 rounded-lg"></label><div class="flex gap-2"><button type="button" id="fecharMov" class="bg-slate-700 rounded-lg p-3 flex-1">Cancelar</button><button class="neon-btn rounded-lg p-3 flex-1">Salvar</button></div></form></div>
 <!-- Modal: Nova Entrada -->
     <div id="modalEntrada" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="neon-card rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4">
@@ -434,7 +434,7 @@
                 </button>
             </div>
 
-            <form id="formEntrada" class="space-y-3.5"><input type="hidden" id="entradaEditId"><label class="block text-xs text-slate-400">Classificação da operação<select id="entradaCategoria" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white"><option value="AVULSA">Entrada avulsa</option><option value="ARBITRAGEM">Arbitragem</option><option value="NAO_CLASSIFICADA">Não classificada (histórico)</option></select></label>
+            <form id="formEntrada" class="space-y-3.5"><input type="hidden" id="entradaEditId"><label class="block text-xs text-slate-400">Classificação da operação<select id="entradaCategoria" required class="w-full bg-voidbg border border-darkborder rounded-xl px-3 py-2 text-sm text-white"><option value="AVULSA">Entrada avulsa</option><option value="RODADAS_GRATIS">Rodadas Grátis</option><option value="ARBITRAGEM">Arbitragem</option><option value="NAO_CLASSIFICADA">Não classificada (histórico)</option></select></label>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Data</label>
@@ -880,7 +880,7 @@
                             <div class="text-[11px] text-slate-400">${escapeHtml(casa.conta)}</div>
                         </td>
                         <td class="py-3 px-4 text-slate-200">${escapeHtml(item.mercado)}</td>
-                        <td class="py-3 px-4 text-right text-slate-200">${Number(item.odd).toFixed(2)}</td>
+                        <td class="py-3 px-4 text-right text-slate-200">${item.categoria==='RODADAS_GRATIS'?'—':Number(item.odd).toFixed(2)}</td>
                         <td class="py-3 px-4 text-right text-slate-200">${formatBRL(item.stake)}</td>
                         <td class="py-3 px-4 text-center">
                             <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide ${isPending ? 'status-pending' : item.resultado === 'CASHOUT' ? 'status-cashout' : isGreen ? 'status-green' : 'status-red'}">
@@ -1128,16 +1128,22 @@
             }
 
             function atualizarCamposResultadoEntrada() {
-                const resultado=document.getElementById('entradaResultado').value;
+                const gratis=document.getElementById('entradaCategoria').value==='RODADAS_GRATIS';
+                const odd=document.getElementById('entradaOdd'),stake=document.getElementById('entradaStake'),res=document.getElementById('entradaResultado');
+                for(const campo of [odd,stake]){campo.disabled=gratis;campo.required=!gratis;}
+                res.disabled=gratis;if(gratis)res.value='GREEN';
+                const resultado=res.value;
                 const exibir=['GREEN','CASHOUT'].includes(resultado);
                 document.getElementById('entradaRetornoWrap').classList.toggle('hidden',!exibir);
                 document.getElementById('entradaRetorno').required=exibir;
             }
             document.getElementById('entradaResultado').addEventListener('change',atualizarCamposResultadoEntrada);
+            document.getElementById('entradaCategoria').addEventListener('change',()=>{atualizarCamposResultadoEntrada();atualizarPreviewEntrada();});
+            document.getElementById('entradaRetorno').addEventListener('input',atualizarPreviewEntrada);
             function atualizarPreviewEntrada() {
                 const odd=Number(document.getElementById('entradaOdd').value)||1;
                 const stake=Number(document.getElementById('entradaStake').value)||0;
-                const el=document.getElementById('previewPnlEntrada');el.textContent=formatPnlBRL(stake*(odd-1));el.className='text-sm font-bold mono text-neonGreen';
+                const el=document.getElementById('previewPnlEntrada');el.textContent=formatPnlBRL(document.getElementById('entradaCategoria').value==='RODADAS_GRATIS'?Number(document.getElementById('entradaRetorno').value)||0:stake*(odd-1));el.className='text-sm font-bold mono text-neonGreen';
             }
 
             function abrirModal(id) {
@@ -1201,7 +1207,7 @@
                 document.getElementById('entradaOdd').value = '1.95';
                 document.getElementById('entradaStake').value = '150.00';
                 document.getElementById('entradaEditId').value = '';document.getElementById('entradaCategoria').value='AVULSA';
-                document.getElementById('tituloEntrada').textContent='Registrar Nova Entrada';
+                document.getElementById('tituloEntrada').textContent='Registrar Nova Entrada';document.getElementById('entradaResultado').value='PENDENTE';document.getElementById('entradaRetorno').value='';atualizarCamposResultadoEntrada();
                 atualizarPreviewEntrada();
                 abrirModal('modalEntrada');
             });
@@ -1218,7 +1224,7 @@
                 e.preventDefault();
                 const editId=document.getElementById('entradaEditId').value;
                 const casaEscolhida=document.getElementById('entradaCasa').value;
-                const stakeEscolhida=Number(document.getElementById('entradaStake').value);
+                const gratis=document.getElementById('entradaCategoria').value==='RODADAS_GRATIS';const stakeEscolhida=gratis?0:Number(document.getElementById('entradaStake').value);
                 const resultadoEscolhido=document.getElementById('entradaResultado').value;
                 const retornoCampo=document.getElementById('entradaRetorno').value;
                 const retornoEscolhido=['GREEN','CASHOUT'].includes(resultadoEscolhido)?Number(retornoCampo):undefined;
@@ -1226,14 +1232,14 @@
                 const anterior=estado.entradas.find(x=>x.id===editId);
                 const creditoAnterior=anterior&&anterior.casaId===casaEscolhida&&anterior.resultado==='PENDENTE'?Number(anterior.stake):0;
                 const precisaReservarSaldo=resultadoEscolhido==='PENDENTE' && (!anterior || anterior.resultado!=='PENDENTE' || anterior.casaId!==casaEscolhida || stakeEscolhida>Number(anterior.stake));
-                if(!Number.isFinite(stakeEscolhida)||stakeEscolhida<=0){alert('Informe um valor apostado válido.');return;}
+                if(!Number.isFinite(stakeEscolhida)||(!gratis&&stakeEscolhida<=0)){alert('Informe um valor apostado válido.');return;}
                 if(precisaReservarSaldo && stakeEscolhida>disponivelCasa(casaEscolhida)+creditoAnterior){alert('Saldo disponível insuficiente nesta casa.');return;}
-                const nova={categoria:document.getElementById('entradaCategoria').value,id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:resultadoEscolhido,retornoRecebido:retornoEscolhido,finalizadaEm:resultadoEscolhido==='PENDENTE'?undefined:(anterior?.finalizadaEm||new Date().toISOString())};
+                const nova={categoria:document.getElementById('entradaCategoria').value,id:editId||'e_'+Date.now(),data:document.getElementById('entradaData').value,casaId:casaEscolhida,mercado:document.getElementById('entradaMercado').value.trim(),odd:gratis?null:Number(document.getElementById('entradaOdd').value),stake:stakeEscolhida,resultado:resultadoEscolhido,retornoRecebido:retornoEscolhido,finalizadaEm:resultadoEscolhido==='PENDENTE'?undefined:(anterior?.finalizadaEm||new Date().toISOString())};
                 if(anterior)Object.assign(anterior,nova);else estado.entradas.push(nova);
                 salvarEstado();
                 renderizarTudo();
                 fecharModal('modalEntrada');
-                mostrarFeedback(editId ? "Entrada atualizada." : "Entrada registrada como PENDENTE.");
+                mostrarFeedback(editId ? "Entrada atualizada." : "Entrada registrada.");
             });
 
             // Modais Casa
@@ -1324,7 +1330,7 @@
                     const validoId=id=>typeof id==='string'&&id.length>0&&id.length<150;
                     const validaData=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}/.test(d);
                     if(!importado.casas.every(c=>objeto(c)&&validoId(c.id)&&typeof c.nome==='string'&&typeof c.conta==='string'&&validoNumero(Number(c.bancaInicial??0))))throw Error('Dados de casas inválidos.');
-                    if(!importado.entradas.every(e=>objeto(e)&&validoId(e.id)&&ids.has(e.casaId)&&validaData(e.data)&&typeof e.mercado==='string'&&validoNumero(e.stake)&&Number.isFinite(e.odd)&&e.odd>0&&['PENDENTE','GREEN','RED','CASHOUT','REEMBOLSO','ANULADA'].includes(e.resultado)&&(!['CASHOUT'].includes(e.resultado)||validoNumero(e.retornoRecebido))&&(e.retornoRecebido===undefined||validoNumero(e.retornoRecebido))))throw Error('Apostas inválidas ou associadas a casas inexistentes.');
+                    if(!importado.entradas.every(e=>objeto(e)&&validoId(e.id)&&ids.has(e.casaId)&&validaData(e.data)&&typeof e.mercado==='string'&&validoNumero(e.stake)&&(e.categoria==='RODADAS_GRATIS'?e.stake===0&&e.resultado==='GREEN'&&validoNumero(e.retornoRecebido):Number.isFinite(e.odd)&&e.odd>0)&&['PENDENTE','GREEN','RED','CASHOUT','REEMBOLSO','ANULADA'].includes(e.resultado)&&(!['CASHOUT'].includes(e.resultado)||validoNumero(e.retornoRecebido))&&(e.retornoRecebido===undefined||validoNumero(e.retornoRecebido))))throw Error('Apostas inválidas ou associadas a casas inexistentes.');
                     if(!importado.movimentacoes.every(m=>objeto(m)&&validoId(m.id)&&ids.has(m.casaId)&&validaData(m.data)&&['DEPOSITO','SAQUE','RODADAS_GRATIS'].includes(m.tipo)&&validoNumero(m.valor)))throw Error('Movimentações inválidas.');
                     const totalDep=importado.movimentacoes.filter(m=>m.tipo==='DEPOSITO').reduce((a,m)=>a+m.valor,0);
                     const aviso='Backup validado: '+importado.casas.length+' casas, '+importado.entradas.length+' apostas e '+importado.movimentacoes.length+' movimentações. Depósitos: '+formatBRL(totalDep)+'.\\n\\nATENÇÃO: esta ação SUBSTITUI os dados deste navegador (não soma nem mescla). Um backup automático dos dados atuais será baixado antes. Deseja continuar?';
