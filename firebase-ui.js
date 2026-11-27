@@ -307,7 +307,7 @@ function modal(){
    const baseAtiva=!!syncBaseline&&syncTimer!==null&&!autoUploadEnabled;
    const baseIgual=baseAtiva&&sameState(syncBaseline,cloud);
    const revisaoIgual=baseAtiva&&syncRevision===cloud.revisao;
-   const aprovado=iguais&&baseIgual&&revisaoIgual&&localDepois.entradas.length===38&&localDepois.casas.length===5&&localDepois.movimentacoes.length===12;
+   const aprovado=iguais&&baseIgual&&revisaoIgual;
    info((aprovado?'AUDITORIA FINANCEIRA APROVADA':'AUDITORIA FINANCEIRA REQUER CONFERÊNCIA')+' · navegador: '+resumo(localDepois)+' · nuvem: '+resumo(cloud)+' · revisão '+cloud.revisao+' · rotina ativa: '+(baseAtiva?'sim':'não')+' · base igual: '+(baseIgual?'sim':'não')+' · revisão da base igual: '+(revisaoIgual?'sim':'não')+' · '+diagnosticText(d)+'. Somente leitura; nenhum dado gravado.');
   }catch(e){info('AUDITORIA INTERROMPIDA: '+e.message+'. Nenhum dado gravado.');}
  }));
