@@ -463,7 +463,7 @@ const sameState=(a,b)=>Object.values(differences(a,b)).every(x=>!x.apenasLocal.l
  const stake=cents(e.stake||0);let p=0;
  if(e.resultado==='PENDENTE')reserved+=stake;
  else if(e.resultado==='CASHOUT')p=cents(e.retornoRecebido||0)-stake;
- else if(e.resultado==='GREEN')p=Number.isFinite(Number(e.retornoRecebido))?cents(e.retornoRecebido)-stake:cents(Number(e.stake||0)*((Number(e.odd)||1)-1));
+ else if(e.resultado==='GREEN')p=e.retornoRecebido!=null&&e.retornoRecebido!==''&&Number.isFinite(Number(e.retornoRecebido))?cents(e.retornoRecebido)-stake:cents(Number(e.stake||0)*((Number(e.odd)||1)-1));
  else if(!['ANULADA','REEMBOLSO'].includes(e.resultado))p=-stake;
  pnl+=p;
  }
