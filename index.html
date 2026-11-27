@@ -1003,19 +1003,18 @@
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 ctx.clearRect(0, 0, width, height);
 
-                const ordenadas = estado.entradas.filter(e=>e.resultado!=='PENDENTE').map(e=>({...e,data:e.finalizadaEm||e.data})).sort((a,b)=>a.data.localeCompare(b.data));
-                const bancaBase = estado.casas.reduce((acc, c) => acc + (Number(c.bancaInicial) || 0), 0);
-
-                const pontosLucro = [0];
-                const pontosPatrimonio = [bancaBase];
-                const labels = ['Início'];
-
-                let acumLucro = 0;
-                ordenadas.forEach((e, idx) => {
-                    acumLucro += calcularPnlEntrada(e);
+                const eventos = [
+                    ...estado.entradas.filter(e=>e.resultado!=='PENDENTE').map(e=>({data:e.categoria==='RODADAS_GRATIS'?e.data:(e.finalizadaEm||e.data),pnl:calcularPnlEntrada(e),fluxo:0})),
+                    ...estado.movimentacoes.map(m=>({data:m.data,pnl:0,fluxo:(m.tipo==='SAQUE'?-1:1)*Number(m.valor)}))
+                ].sort((a,b)=>a.data.localeCompare(b.data));
+                const bancaBase = estado.casas.reduce((acc,c)=>acc+(Number(c.bancaInicial)||0),0);
+                const pontosLucro=[0],pontosPatrimonio=[bancaBase],labels=['Início'];
+                let acumLucro=0,acumFluxo=bancaBase;
+                eventos.forEach((e,idx)=>{
+                    acumLucro+=e.pnl;acumFluxo+=e.fluxo;
                     pontosLucro.push(acumLucro);
-                    pontosPatrimonio.push(bancaBase + acumLucro);
-                    labels.push(e.data ? e.data.slice(8,10)+'/'+e.data.slice(5,7) : `#${idx + 1}`);
+                    pontosPatrimonio.push(acumFluxo+acumLucro);
+                    labels.push(e.data?e.data.slice(8,10)+'/'+e.data.slice(5,7):'#'+(idx+1));
                 });
 
                 const padLeft = 56;
