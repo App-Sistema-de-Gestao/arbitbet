@@ -571,7 +571,7 @@ function start(){
  $('loginMostrar').onclick=()=>{const p=$('loginSenha');p.type=p.type==='password'?'text':'password';$('loginMostrar').textContent=p.type==='password'?'Mostrar':'Ocultar';};
  $('loginTrocar').onclick=async()=>{try{await sair();}catch(e){status.textContent='Não foi possível sair. Tente novamente.';}};
  $('btnSair').onclick=async()=>{lock();stopSafeSync();stopAuto();stopLabWatch();try{await sair();}catch(e){status.textContent='Não foi possível sair. Tente novamente.';$('loginTrocar').classList.remove('hidden');}};
- form.onsubmit=async e=>{e.preventDefault();ready(false);status.textContent='Autenticando...';try{await entrar($('loginEmail').value.trim(),$('loginSenha').value);$('loginSenha').value='';}catch(e){status.textContent='Não foi possível entrar. Confira e-mail, senha e conexão.';ready(true);}};
+ form.onsubmit=async e=>{e.preventDefault();ready(false);status.textContent='Autenticando...';try{await entrar($('loginEmail').value.trim(),$('loginSenha').value);$('loginSenha').value='';}catch(e){status.textContent='Não foi possível entrar. Código Firebase: '+(typeof e?.code==='string' && /^[a-z0-9/_-]+$/i.test(e.code)?e.code:'erro-desconhecido');ready(true);}};
  $('loginRecuperar').onclick=async()=>{const field=$('loginEmail');if(!field.reportValidity())return;try{await recuperarSenha(field.value);status.textContent='Se a conta estiver cadastrada, confira seu e-mail para redefinir a senha.';}catch(e){status.textContent='Não foi possível solicitar a recuperação. Confira a conexão e tente novamente.';}};
  async function prepare(user,epoch){
   const active=()=>epoch===authEpoch&&currentUid===user.uid;
