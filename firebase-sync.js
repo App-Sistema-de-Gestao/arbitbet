@@ -2,7 +2,7 @@
 // Não contém credenciais, não executa login ou gravação automaticamente.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, getDocFromServer, runTransaction } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 
 let auth, db;
 const pathFor = uid => doc(db, 'users', uid, 'state', 'current');
@@ -554,4 +554,19 @@ export async function gravarMigracaoControlada({base, candidato, revisaoEsperada
     if(!snap.exists()||snap.data().revisao!==revisao||normalizar(snap.data())!==destinoCanon)throw Error('Estado posterior divergente.');
   }catch(e){throw Error('Gravação retornou revisão '+revisao+'; verificação posterior falhou. Consulte a nuvem antes de qualquer nova tentativa. '+e.message);}
   return {revisao,estado:destino};
+}
+
+export async function prepararBaseHomologacao(base, uid, confirmado) {
+ const guard=()=>{const u=usuarioAtual();if(db.app.options.projectId!=='arbitbet-homologacao'||u.email!=='homologacao@arbitbet.example'||u.uid!==uid||confirmado!==true)throw Error('Ambiente ou conta não autorizados.');};
+ guard();validarEstado(base);
+ const campos=['casas','entradas','movimentacoes'];
+ const canon=x=>Array.isArray(x)?x.map(canon):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,canon(x[k])])):x;
+ const normalizar=s=>JSON.stringify(campos.map(k=>[...s[k]].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(canon)));
+ const estado=structuredClone(base);
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(normalizar(estado)))),b=>b.toString(16).padStart(2,'0')).join('');
+ if(hash!=='9c6bff5e8aecf09bbe354117a93ab952c4ed0e9e5a2f8e6b3723e4d159012aef')throw Error('Backup original incorreto.');
+ const ref=pathFor(uid);
+ await runTransaction(db,async tx=>{guard();const snap=await tx.get(ref);guard();if(!snap.exists()||snap.data().revisao!==9||campos.some(k=>snap.data()[k]?.length!==1))throw Error('Base fictícia inesperada.');tx.update(ref,{revisao:47,atualizadoEm:new Date().toISOString(),...Object.fromEntries(campos.map(k=>[k,estado[k]]))});});
+ guard();const snap=await getDocFromServer(ref);guard();if(!snap.exists()||snap.data().revisao!==47||normalizar(snap.data())!==normalizar(estado))throw Error('Confira a nuvem antes de repetir.');
+ return estado;
 }
