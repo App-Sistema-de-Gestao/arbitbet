@@ -2,12 +2,12 @@
 import { gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
-  apiKey: 'AIzaSyD-PNK3A4AoMhqNaj2yEgz_rjjyFBhhj1I',
-  authDomain: 'arbitbet-v2.firebaseapp.com',
-  projectId: 'arbitbet-v2',
-  storageBucket: 'arbitbet-v2.firebasestorage.app',
-  messagingSenderId: '645879580947',
-  appId: '1:645879580947:web:4c013c1283d4f5928e72e6'
+  apiKey: 'AIzaSyC9l0JtcQr5lXY3VkzKn7UNS0jCJJA3BJo',
+  authDomain: 'arbitbet-homologacao.firebaseapp.com',
+  projectId: 'arbitbet-homologacao',
+  storageBucket: 'arbitbet-homologacao.firebasestorage.app',
+  messagingSenderId: '844076262883',
+  appId: '1:844076262883:web:2032211dd19bea714eecd6'
 };
 const $ = id => document.getElementById(id);
 const clone = x => JSON.parse(JSON.stringify(x));
