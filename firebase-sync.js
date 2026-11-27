@@ -570,3 +570,18 @@ export async function prepararBaseHomologacao(base, uid, confirmado) {
  guard();const snap=await getDocFromServer(ref);guard();if(!snap.exists()||snap.data().revisao!==47||normalizar(snap.data())!==normalizar(estado))throw Error('Confira a nuvem antes de repetir.');
  return estado;
 }
+
+export async function limparHomologacao(uid, confirmado) {
+ const guard=()=>{const u=usuarioAtual();if(db.app.options.projectId!=='arbitbet-homologacao'||u.email!=='homologacao@arbitbet.example'||u.uid!==uid||confirmado!==true)throw Error('Ambiente ou conta não autorizados.');};
+ const estado={casas:[{id:'c_1795743946333',nome:'Casa test',conta:'Teste',bancaInicial:0}],entradas:[{categoria:'RODADAS_GRATIS',id:'e_1795743978725',data:'2026-11-26',casaId:'c_1795743946333',mercado:'Bônus rodadas grátis',odd:null,stake:0,resultado:'GREEN',retornoRecebido:0.8,finalizadaEm:'2026-11-27T01:46:18.725Z'}],movimentacoes:[{id:'dep-inicial-c_1795743946333',tipo:'DEPOSITO',casaId:'c_1795743946333',valor:10,data:'2026-11-26',obs:'Depósito inicial no cadastro'}]};
+ const campos=['casas','entradas','movimentacoes'];
+ const canon=x=>Array.isArray(x)?x.map(canon):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,canon(x[k])])):x;
+ const normalizar=s=>JSON.stringify(campos.map(k=>[...s[k]].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(canon)));
+ guard();const ref=pathFor(uid);
+ await runTransaction(db,async tx=>{guard();const snap=await tx.get(ref);guard();if(!snap.exists()||snap.data().revisao!==48)throw Error('Revisão inesperada.');
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(normalizar(snap.data())))),b=>b.toString(16).padStart(2,'0')).join('');
+ guard();if(hash!=='aff7ef75d365b1e28b9f63c7c74eb30dd6621aff4d8afb1b0ac0894b91e9ceca')throw Error('Base remota inesperada.');
+ tx.set(ref,{versaoEsquema:1,revisao:49,atualizadoEm:new Date().toISOString(),...estado});});
+ guard();const snap=await getDocFromServer(ref);guard();if(!snap.exists()||snap.data().revisao!==49||normalizar(snap.data())!==normalizar(estado))throw Error('Confira a nuvem antes de repetir.');
+ return estado;
+}
