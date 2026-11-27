@@ -1,5 +1,5 @@
 // Interface experimental da nuvem: somente branch feature/firebase-sync-testes.
-import { gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
+import { prepararBaseHomologacao, gravarMigracaoControlada, configurarFirebase, entrar, sair, recuperarSenha, excluirEntradaConfirmada, consultarNuvem, gravarComConfirmacao, mesclarSemPerdas, sincronizarTresVias, testarConciliacaoEmMemoria, consultarLaboratorio, executarLaboratorio, enviarEventosLaboratorio, conciliar99play, observarUsuario, testeFinanceiroIsolado, homologarFinanceiroIsolado, testarConcorrenciaHomologacao, capturarBaseConcorrenciaReal, enviarConcorrenciaReal } from './firebase-sync.js';
 
 const config = {
   apiKey: 'AIzaSyC9l0JtcQr5lXY3VkzKn7UNS0jCJJA3BJo',
@@ -323,6 +323,29 @@ function modal(){
   }catch(e){info('SIMULAÇÃO BLOQUEADA: '+e.message);}};
   picker.click();
  }));
+ actions.append(button('Preparar revisão 47 — somente homologação',()=>{
+  if(config.projectId!=='arbitbet-homologacao'||email!=='homologacao@arbitbet.example'||!maintenance()||maintenanceBusy||syncBusy||uploadBusy)return info('Ambiente, conta ou manutenção não autorizados.');
+  const uid=currentUid,epoch=authEpoch;
+  const picker=document.createElement('input');picker.type='file';picker.accept='.json,application/json';
+  picker.onchange=async()=>{
+   if(!picker.files?.[0]||uid!==currentUid||epoch!==authEpoch||!maintenance()||maintenanceBusy||syncBusy||uploadBusy)return;
+   maintenanceBusy=true;
+   try{
+    const base=JSON.parse(await picker.files[0].text());
+    const cloud=await consultarNuvem();
+    if(uid!==currentUid||epoch!==authEpoch||!maintenance()||cloud.revisao!==9||!sameState(window.arbitbetCloudBridge.get(),cloud))throw Error('Base fictícia ou sessão alterada.');
+    if(prompt('Somente conta de homologação. Confirme backup fictício salvo e substituição temporária por cópia dos dados originais. Digite PREPARAR TESTE.')!=='PREPARAR TESTE')return;
+    const estado=await prepararBaseHomologacao(base,uid,true);
+    if(uid!==currentUid||epoch!==authEpoch||!maintenance())throw Error('Sessão alterada após gravação. Confira a nuvem.');
+    window.arbitbetCloudBridge.replace(estado);
+    if(!sameState(window.arbitbetCloudBridge.get(),estado))throw Error('Verificação local falhou.');
+    remote={...estado,existe:true,revisao:47};
+    $('cloudLocal').textContent=resumo(estado);$('cloudRemote').textContent=resumo(estado)+' · Revisão 47';
+    info('BASE DE HOMOLOGAÇÃO PREPARADA · revisão 47 · manutenção mantida.');
+   }catch(e){info('Preparação interrompida: '+e.message+' Confira a nuvem antes de repetir.');}
+   finally{maintenanceBusy=false;}
+  };picker.click();
+ }));
  actions.append(button('Aplicar migração financeira — homologação',()=>{
   if(config.projectId!=='arbitbet-homologacao')return info('GRAVAÇÃO BLOQUEADA: disponível somente no Firebase de homologação.');
   if(!currentUid||!maintenance()||maintenanceBusy||uploadBusy||syncBusy)return info('Ative a manutenção e aguarde operações pendentes.');
@@ -451,7 +474,7 @@ function modal(){
  for(const el of [...actions.children]){
   if(el===advanced)continue;
   const t=el.textContent||'';
-  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Simular migração|Aplicar migração|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
+  if(/Laboratório|Homologação financeira|Auditoria final|Financeiro fictício|Teste sem gravar|Testar sincronização|Simular recuperação|Simular migração|Preparar revisão 47|Aplicar migração|Testar restauração|Conciliar 99play|Preparar Bets365|Ativar envio automático|Mesclar sem excluir|Restaurar da nuvem/.test(t))advancedActions.append(el);
  }
  setActions(false);
 }
