@@ -427,3 +427,47 @@ export async function enviarEventosLaboratorio(eventos){
   tx.set(ref,next);return next;
  });
 }
+
+
+// Primitiva de migração: ainda não conectada à interface.
+// O chamador deve validar o conteúdo autorizado e confirmar backups antes de invocar.
+export async function gravarMigracaoControlada({base, candidato, revisaoEsperada, uidEsperado, confirmado, backupsConfirmados}) {
+  if(confirmado!==true||backupsConfirmados!==true)throw Error('Confirmação e backups obrigatórios.');
+  if(revisaoEsperada!==47||typeof uidEsperado!=='string'||!uidEsperado)throw Error('Base ou conta inesperada.');
+  const original=structuredClone(base), destino=structuredClone(candidato);
+  const campos=['casas','entradas','movimentacoes'];
+  const canon=x=>Array.isArray(x)?x.map(canon):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,canon(x[k])])):x;
+  const normalizar=s=>{
+    validarEstado(s);
+    return JSON.stringify(campos.map(k=>{
+      const ids=new Set();
+      for(const x of s[k]){
+        if(!x||typeof x.id!=='string'||!x.id.trim()||ids.has(x.id))throw Error('ID inválido ou duplicado.');
+        ids.add(x.id);
+      }
+      return [...s[k]].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(canon);
+    }));
+  };
+  const originalCanon=normalizar(original), destinoCanon=normalizar(destino);
+  if(originalCanon===destinoCanon)throw Error('Migração sem alterações.');
+  if(original.casas.length!==6||original.entradas.length!==48||original.movimentacoes.length!==12||destino.casas.length!==6||destino.entradas.length!==50||destino.movimentacoes.length!==11)throw Error('Contagens inesperadas.');
+  const conferirConta=()=>{if(usuarioAtual().uid!==uidEsperado)throw Error('Conta alterada.');};
+  conferirConta();
+  const ref=pathFor(uidEsperado);
+  const revisao=await runTransaction(db,async tx=>{
+    conferirConta();
+    const snap=await tx.get(ref);
+    conferirConta();
+    if(!snap.exists()||snap.data().revisao!==revisaoEsperada||normalizar(snap.data())!==originalCanon)throw Error('Base remota alterada. Migração bloqueada.');
+    tx.update(ref,{revisao:revisaoEsperada+1,atualizadoEm:new Date().toISOString(),casas:destino.casas,entradas:destino.entradas,movimentacoes:destino.movimentacoes});
+    return revisaoEsperada+1;
+  });
+  // Uma falha daqui em diante não significa que a transação foi revertida.
+  try{
+    conferirConta();
+    const snap=await getDoc(ref);
+    conferirConta();
+    if(!snap.exists()||snap.data().revisao!==revisao||normalizar(snap.data())!==destinoCanon)throw Error('Estado posterior divergente.');
+  }catch(e){throw Error('Gravação retornou revisão '+revisao+'; verificação posterior falhou. Consulte a nuvem antes de qualquer nova tentativa. '+e.message);}
+  return {revisao,estado:destino};
+}
