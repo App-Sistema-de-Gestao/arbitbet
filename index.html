@@ -681,8 +681,8 @@
                 const stakePeriodo = entradasPeriodo.filter(e=>!['PENDENTE','ANULADA','REEMBOLSO'].includes(e.resultado)).reduce((acc, e) => acc + (Number(e.stake) || 0), 0);
                 const roiPeriodo = stakePeriodo > 0 ? (pnlPeriodo / stakePeriodo) * 100 : 0;
 
-                const greens = entradasPeriodo.filter((e) => calcularPnlEntrada(e)>0).length;
-                const reds = entradasPeriodo.filter((e) => calcularPnlEntrada(e)<0).length;
+                const greens = entradasPeriodo.filter((e) => e.categoria!=='RODADAS_GRATIS' && calcularPnlEntrada(e)>0).length;
+                const reds = entradasPeriodo.filter((e) => e.categoria!=='RODADAS_GRATIS' && calcularPnlEntrada(e)<0).length;
                 const totalOps = greens + reds;
                 const winrate = totalOps > 0 ? (greens / totalOps) * 100 : 0;
 
@@ -933,7 +933,7 @@
 
                 estado.entradas.forEach((e) => {
                     if (!e.data) return;
-                    const [y, m, d] = (e.finalizadaEm||e.data).split('-').map(Number);
+                    const [y, m, d] = (e.categoria==='RODADAS_GRATIS'?e.data:(e.finalizadaEm||e.data)).slice(0,10).split('-').map(Number);
                     if (y === ano && (m - 1) === mes) {
                         const pnl = calcularPnlEntrada(e);
                         if(e.resultado==='PENDENTE')return;
